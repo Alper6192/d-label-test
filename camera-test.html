@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Kameratest</title>
+  <style>
+    body { margin: 0; padding: 16px; background: #050a12; color: white; font-family: system-ui, sans-serif; }
+    video { width: 100%; max-height: 75vh; object-fit: contain; background: black; border: 4px solid #38bdf8; border-radius: 14px; }
+    button { margin-top: 12px; min-height: 44px; padding: 8px 14px; font: inherit; font-weight: 700; }
+    #status { margin-top: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Kameratest ohne OCR</h1>
+  <video id="video" autoplay muted playsinline></video>
+  <button id="start" type="button">Kamera starten</button>
+  <p id="status">Bereit</p>
+  <script>
+    const video = document.getElementById("video");
+    const status = document.getElementById("status");
+    let stream;
+
+    document.getElementById("start").addEventListener("click", async () => {
+      try {
+        if (stream) stream.getTracks().forEach((track) => track.stop());
+        status.textContent = "Kamera wird angefordert …";
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = stream;
+        await video.play();
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const track = stream.getVideoTracks()[0];
+        status.textContent = `Kamera läuft\nVideogröße: ${video.videoWidth} × ${video.videoHeight}\n${track.label || "Kameraname nicht verfügbar"}`;
+      } catch (error) {
+        status.textContent = `${error.name}: ${error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
