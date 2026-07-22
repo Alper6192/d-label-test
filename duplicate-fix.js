@@ -59,28 +59,74 @@
    * ungültig: D562708020A
    * ungültig: D5627080201
    */
-  extractStrictDCodes = function extractStrictDCodesStrict(text) {
-    const normalizedText =
-      String(text || "")
-        .toUpperCase()
-        .replace(/\r/g, "");
+ extractStrictDCodes = function extractStrictDCodesVariableLength(text) {
+  const normalizedText =
+    String(text || "")
+      .toUpperCase()
+      .replace(/\r/g, "");
 
-    const pattern =
-      /(?:^|[^A-Z0-9])D([0-9]{9})(?![A-Z0-9])/g;
+  /*
+   * Erlaubt:
+   * D direkt gefolgt von einer beliebigen Anzahl Ziffern.
+   *
+   * Nicht erlaubt:
+   * D 123
+   * DA123
+   * D-123
+   * D123A
+   * D123 456
+   */
+  const pattern =
+    /(?:^|[^A-Z0-9])D([0-9]+)(?![A-Z0-9]|[\s._/-]+[0-9])/g;
 
-    const results = new Set();
+  const results = new Set();
 
-    let match;
+  let match;
 
-    while (
-      (match = pattern.exec(normalizedText)) !== null
-    ) {
-      results.add(`D${match[1]}`);
-    }
+  while (
+    (match = pattern.exec(normalizedText)) !== null
+  ) {
+    results.add(`D${match[1]}`);
+  }
 
-    return [...results];
-  };
+  return [...results];
+};
 
+  normalizeManualCode = function normalizeManualVariableCode(value) {
+  const normalized =
+    String(value || "")
+      .toUpperCase()
+      .trim();
+
+  /*
+   * Während der Eingabe bleiben nur D und Ziffern erhalten.
+   * Es wird kein Leerzeichen zwischen D und Zahl eingefügt.
+   */
+  if (!normalized.startsWith("D")) {
+    return normalized
+      .replace(/[^0-9]/g, "")
+      .replace(/^/, "D");
+  }
+
+  return (
+    "D" +
+    normalized
+      .slice(1)
+      .replace(/[^0-9]/g, "")
+  );
+};
+
+
+isValidCode = function isValidVariableCode(value) {
+  /*
+   * D direkt gefolgt von mindestens einer Ziffer.
+   * Keine feste maximale oder minimale Ziffernanzahl.
+   */
+  return /^D[0-9]+$/.test(
+    String(value || "")
+      .toUpperCase()
+  );
+};
 
   /*
    * Die ursprünglichen Dateiauswahl-Listener rufen processFile
@@ -1461,9 +1507,9 @@
       String(text || "")
         .toUpperCase()
         .replace(
-          /(?:^|[^A-Z0-9])D[0-9]{9}(?![A-Z0-9])/g,
-          " "
-        )
+  /(?:^|[^A-Z0-9])D[0-9]+(?![A-Z0-9])/g,
+  " "
+)
         .replace(/[^A-Z0-9]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
