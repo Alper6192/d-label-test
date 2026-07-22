@@ -7,19 +7,38 @@
    * Die Erkennung ist absichtlich konservativ:
    * Ein unsicherer zweiter Scan wird blockiert.
    */
-  const LIMITS = Object.freeze({
-    almostIdenticalVisual: 0.90,
+ const LIMITS = Object.freeze({
+  /*
+   * Nur Bilder mit nahezu identischer Struktur
+   * werden allein anhand des Bildes blockiert.
+   */
+  almostIdenticalVisual: 0.975,
 
-    strongTextSimilarity: 0.72,
-    minimumVisualWithStrongText: 0.38,
+  /*
+   * Hohe Textähnlichkeit benötigt zusätzlich
+   * eine deutliche visuelle Ähnlichkeit.
+   */
+  strongTextSimilarity: 0.88,
+  minimumVisualWithStrongText: 0.68,
 
-    mediumTextSimilarity: 0.48,
-    minimumVisualWithMediumText: 0.60,
+  /*
+   * Mittlere Textähnlichkeit wird nur bei
+   * sehr hoher Bildähnlichkeit berücksichtigt.
+   */
+  mediumTextSimilarity: 0.74,
+  minimumVisualWithMediumText: 0.84,
 
-    minimumVisualWithoutText: 0.52,
+  /*
+   * Ohne ausreichend OCR-Text wird nur noch
+   * bei extrem ähnlichen Bildern blockiert.
+   */
+  minimumVisualWithoutText: 0.95,
 
-    minimumVisualWithCommonIdentifiers: 0.50
-  });
+  /*
+   * Mehrere echte Kennungen plus ähnlicher Bildaufbau.
+   */
+  minimumVisualWithCommonIdentifiers: 0.72
+});
 
   const CODE_WHITELIST =
     "D0123456789OQILSZGB -.:/_";
@@ -1531,15 +1550,29 @@ isValidCode = function isValidVariableCode(value) {
           )
       )];
 
-    const strongTokens =
-      tokens.filter(token =>
-        /^[0-9]{4,}$/.test(token) ||
-        (
-          /[A-Z]/.test(token) &&
-          /[0-9]/.test(token)
-        ) ||
-        token.length >= 7
-      );
+   const strongTokens =
+  tokens.filter(token => {
+    /*
+     * Allgemeine Etikettenbegriffe sind keine
+     * eindeutigen Identitätsmerkmale.
+     */
+    if (GENERIC_WORDS.has(token)) {
+      return false;
+    }
+
+    /*
+     * Lange reine Zahlen oder gemischte Artikel-
+     * und Chargencodes sind echte Kennungen.
+     */
+    return (
+      /^[0-9]{5,}$/.test(token) ||
+      (
+        token.length >= 5 &&
+        /[A-Z]/.test(token) &&
+        /[0-9]/.test(token)
+      )
+    );
+  });
 
     return {
       tokens,
@@ -1640,10 +1673,124 @@ isValidCode = function isValidVariableCode(value) {
   }
 
 
-  function evaluateDuplicate(
-    visual,
-    textComparison
+ function evaluateDuplicate(
+  visual,
+  textComparison
+) {
+  const textAvailable =
+    Boolean(textComparison?.available);
+
+  const textSimilarity =
+    Number(
+      textComparison?.similarity || 0
+    );
+
+  const commonStrong =
+    Number(
+      textComparison?.commonStrong || 0
+    );
+
+  /*
+   * Fall 1:
+   * Nahezu identischer Bildaufbau.
+   *
+   * Dieser Grenzwert ist absichtlich sehr hoch.
+   */
+  if (
+    visual >=
+    LIMITS.almostIdenticalVisual
   ) {
+    return {
+      duplicate: true,
+      reason:
+        "Das zweite Foto stimmt visuell nahezu vollständig mit Etikett 1 überein."
+    };
+  }
+
+  /*
+   * Fall 2:
+   * Mindestens drei echte gemeinsame Kennungen,
+   * hohe Textähnlichkeit und ähnlicher Bildaufbau.
+   *
+   * Allgemeine Wörter zählen nicht als Kennungen.
+   */
+  if (
+    textAvailable &&
+    commonStrong >= 3 &&
+    textSimilarity >= 0.76 &&
+    visual >=
+      LIMITS.minimumVisualWithCommonIdentifiers
+  ) {
+    return {
+      duplicate: true,
+      reason:
+        "Mehrere eindeutige Nummern oder Kennungen sowie der Bildaufbau stimmen mit Etikett 1 überein."
+    };
+  }
+
+  /*
+   * Fall 3:
+   * Sehr starke Übereinstimmung des gesamten
+   * Begleittexts und ausreichend ähnliches Bild.
+   */
+  if (
+    textAvailable &&
+    textSimilarity >=
+      LIMITS.strongTextSimilarity &&
+    visual >=
+      LIMITS.minimumVisualWithStrongText
+  ) {
+    return {
+      duplicate: true,
+      reason:
+        "Etikettentext und Bildstruktur entsprechen sehr wahrscheinlich erneut Etikett 1."
+    };
+  }
+
+  /*
+   * Fall 4:
+   * Mittlere Textähnlichkeit reicht nur aus,
+   * wenn das Bild zusätzlich sehr stark ähnlich ist.
+   */
+  if (
+    textAvailable &&
+    textSimilarity >=
+      LIMITS.mediumTextSimilarity &&
+    visual >=
+      LIMITS.minimumVisualWithMediumText
+  ) {
+    return {
+      duplicate: true,
+      reason:
+        "Die Kombination aus sehr ähnlicher Bildstruktur und Etikettentext deutet auf einen doppelten Scan hin."
+    };
+  }
+
+  /*
+   * Ohne brauchbaren OCR-Text wird nur bei einer
+   * extrem hohen Bildähnlichkeit blockiert.
+   *
+   * Die bisherige aggressive Fail-closed-Regel
+   * wird damit entfernt.
+   */
+  if (
+    !textAvailable &&
+    visual >=
+      LIMITS.minimumVisualWithoutText
+  ) {
+    return {
+      duplicate: true,
+      reason:
+        "Das zweite Bild ist dem ersten Bild nahezu identisch."
+    };
+  }
+
+  return {
+    duplicate: false,
+    reason:
+      "Etikett 2 unterscheidet sich ausreichend von Etikett 1."
+  };
+}
     if (
       visual >=
       LIMITS.almostIdenticalVisual
@@ -1655,19 +1802,7 @@ isValidCode = function isValidVariableCode(value) {
       };
     }
 
-    if (
-      textComparison.available &&
-      textComparison.similarity >=
-        LIMITS.strongTextSimilarity &&
-      visual >=
-        LIMITS.minimumVisualWithStrongText
-    ) {
-      return {
-        duplicate: true,
-        reason:
-          "Bild und Begleittexte entsprechen sehr wahrscheinlich erneut Etikett 1."
-      };
-    }
+   
 
     if (
       textComparison.available &&
