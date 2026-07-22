@@ -40,8 +40,8 @@
   minimumVisualWithCommonIdentifiers: 0.72
 });
 
-  const CODE_WHITELIST =
-    "D0123456789OQILSZGB -.:/_";
+ const CODE_WHITELIST =
+  "D0123456789";
 
   const TEXT_WHITELIST =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.:/_()[]";
@@ -78,38 +78,545 @@
    * ungültig: D562708020A
    * ungültig: D5627080201
    */
- extractStrictDCodes = function extractStrictDCodesVariableLength(text) {
-  const normalizedText =
-    String(text || "")
-      .toUpperCase()
-      .replace(/\r/g, "");
-
-  /*
-   * Erlaubt:
-   * D direkt gefolgt von einer beliebigen Anzahl Ziffern.
-   *
-   * Nicht erlaubt:
-   * D 123
-   * DA123
-   * D-123
-   * D123A
-   * D123 456
-   */
-  const pattern =
-    /(?:^|[^A-Z0-9])D([0-9]+)(?![A-Z0-9]|[\s._/-]+[0-9])/g;
-
+ extractStrictDCodes = function extractStrictDCodesVariable(text) {
   const results = new Set();
 
-  let match;
+  const lines =
+    String(text || "")
+      .toUpperCase()
+      .replace(/\r/g, "")
+      .split("\n");
 
-  while (
-    (match = pattern.exec(normalizedText)) !== null
-  ) {
-    results.add(`D${match[1]}`);
+  for (const line of lines) {
+    /*
+     * Gültig:
+     * D direkt gefolgt von mindestens einer Ziffer.
+     *
+     * Ungültig:
+     * D 12345
+     * DA12345
+     * D-12345
+     * D123A
+     * D123 456
+     */
+    const pattern =
+      /(?:^|[^A-Z0-9])D([0-9]+)(?![A-Z0-9]|[ \t._/-]+[0-9])/g;
+
+    let match;
+
+    while (
+      (match = pattern.exec(line)) !== null
+    ) {
+      results.add(`D${match[1]}`);
+    }
   }
 
   return [...results];
 };
+  searchForDNumber =
+  async function searchForDNumberWithGeometry(
+    sourceCanvas,
+    slotNumber
+  ) {
+    const passes =
+      createRecognitionPasses(sourceCanvas);
+
+    const voteMap = new Map();
+    const rawResults = [];
+
+    for (
+      let index = 0;
+      index < passes.length;
+      index += 1
+    ) {
+      const pass = passes[index];
+
+      setStatus(
+        `Etikett ${slotNumber}: Prüfung ` +
+        `${index + 1} von ${passes.length} – ${pass.name}`,
+        "scanning"
+      );
+
+      /*
+       * TSV wird zusätzlich angefordert.
+       * Darin stehen Position und Größe jedes erkannten Wortes.
+       */
+      const recognition =
+        await state.worker.recognize(
+          pass.canvas,
+          {},
+          {
+            tsv: true
+          }
+        );
+
+      const text =
+        recognition?.data?.text || "";
+
+      const tsv =
+        recognition?.data?.tsv || "";
+
+      const confidence =
+        Number(
+          recognition?.data?.confidence || 0
+        );
+
+      /*
+       * 1. Direkte, vollkommen strenge Texterkennung.
+       */
+      const directCandidates =
+        extractStrictDCodes(text);
+
+      /*
+       * 2. Positionsbasierte Prüfung.
+       *
+       * Diese erkennt den Fall, dass OCR D und Zahlen
+       * als zwei Wörter trennt, obwohl sie im Bild direkt
+       * nebeneinander gedruckt sind.
+       */
+      const geometricCandidates =
+        extractGeometricDCodes(tsv);
+
+      const candidates =
+        [
+          ...new Set([
+            ...directCandidates,
+            ...geometricCandidates
+          ])
+        ];
+
+      rawResults.push({
+        pass: pass.name,
+        confidence,
+        text: compactText(text),
+        directCandidates,
+        geometricCandidates,
+        candidates
+      });
+
+      appendDebug(
+        `\nEtikett ${slotNumber} – ${pass.name}\n` +
+        `Konfidenz: ${Math.round(confidence)} %\n` +
+        `Text: ${compactText(text)}\n` +
+        `Direkte Treffer: ${
+          directCandidates.join(", ") || "keine"
+        }\n` +
+        `Geometrische Treffer: ${
+          geometricCandidates.join(", ") || "keine"
+        }\n`
+      );
+
+      for (const candidate of candidates) {
+        const current =
+          voteMap.get(candidate) || {
+            votes: 0,
+            confidenceSum: 0
+          };
+
+        current.votes += 1;
+        current.confidenceSum += confidence;
+
+        voteMap.set(candidate, current);
+      }
+
+      const currentWinner =
+        chooseWinner(voteMap);
+
+      if (
+        currentWinner &&
+        currentWinner.votes >= 2
+      ) {
+        return {
+          code: currentWinner.code,
+          votes: currentWinner.votes,
+          averageConfidence:
+            currentWinner.averageConfidence,
+          passes: rawResults
+        };
+      }
+
+      await delay(30);
+    }
+
+    const winner =
+      chooseWinner(voteMap);
+
+    if (!winner) {
+      return {
+        code: null,
+        votes: 0,
+        averageConfidence: 0,
+        passes: rawResults
+      };
+    }
+
+    return {
+      code: winner.code,
+      votes: winner.votes,
+      averageConfidence:
+        winner.averageConfidence,
+      passes: rawResults
+    };
+  };
+  function extractGeometricDCodes(tsv) {
+  const words =
+    parseTsvWords(tsv);
+
+  const groupedLines =
+    new Map();
+
+  for (const word of words) {
+    if (
+      !groupedLines.has(word.lineKey)
+    ) {
+      groupedLines.set(
+        word.lineKey,
+        []
+      );
+    }
+
+    groupedLines
+      .get(word.lineKey)
+      .push(word);
+  }
+
+  const results =
+    new Set();
+
+  for (
+    const lineWords
+    of groupedLines.values()
+  ) {
+    lineWords.sort(
+      (first, second) =>
+        first.left - second.left
+    );
+
+    for (
+      let index = 0;
+      index < lineWords.length;
+      index += 1
+    ) {
+      const current =
+        lineWords[index];
+
+      const currentText =
+        normalizeOcrWord(current.text);
+
+      /*
+       * Fall A:
+       * OCR hat alles als ein Wort erkannt.
+       */
+      const directMatch =
+        currentText.match(
+          /^D([0-9]+)$/
+        );
+
+      if (directMatch) {
+        let digits =
+          directMatch[1];
+
+        let previous =
+          current;
+
+        /*
+         * Falls OCR eine lange Nummer trotz fehlendem
+         * sichtbaren Abstand in mehrere Wörter aufgeteilt hat,
+         * werden direkt angrenzende reine Zahlen ergänzt.
+         */
+        for (
+          let nextIndex = index + 1;
+          nextIndex < lineWords.length;
+          nextIndex += 1
+        ) {
+          const next =
+            lineWords[nextIndex];
+
+          const nextText =
+            normalizeOcrWord(next.text);
+
+          if (
+            !/^[0-9]+$/.test(nextText) ||
+            !areWordsDirectlyAdjacent(
+              previous,
+              next
+            )
+          ) {
+            break;
+          }
+
+          digits += nextText;
+          previous = next;
+        }
+
+        results.add(`D${digits}`);
+        continue;
+      }
+
+      /*
+       * Fall B:
+       * OCR hat D und die direkt anschließende Zahl
+       * fälschlicherweise als zwei Wörter ausgegeben.
+       */
+      if (currentText !== "D") {
+        continue;
+      }
+
+      const next =
+        lineWords[index + 1];
+
+      if (!next) {
+        continue;
+      }
+
+      const nextText =
+        normalizeOcrWord(next.text);
+
+      if (
+        !/^[0-9]+$/.test(nextText)
+      ) {
+        continue;
+      }
+
+      /*
+       * Entscheidend:
+       * Nicht das OCR-Leerzeichen, sondern der gemessene
+       * Abstand im Bild wird geprüft.
+       */
+      if (
+        !areWordsDirectlyAdjacent(
+          current,
+          next
+        )
+      ) {
+        continue;
+      }
+
+      let digits =
+        nextText;
+
+      let previous =
+        next;
+
+      for (
+        let nextIndex = index + 2;
+        nextIndex < lineWords.length;
+        nextIndex += 1
+      ) {
+        const following =
+          lineWords[nextIndex];
+
+        const followingText =
+          normalizeOcrWord(
+            following.text
+          );
+
+        if (
+          !/^[0-9]+$/.test(
+            followingText
+          ) ||
+          !areWordsDirectlyAdjacent(
+            previous,
+            following
+          )
+        ) {
+          break;
+        }
+
+        digits += followingText;
+        previous = following;
+      }
+
+      if (digits) {
+        results.add(`D${digits}`);
+      }
+    }
+  }
+
+  return [...results];
+}
+
+
+function parseTsvWords(tsv) {
+  const lines =
+    String(tsv || "")
+      .split(/\r?\n/);
+
+  const words = [];
+
+  /*
+   * Erste TSV-Zeile enthält die Spaltennamen.
+   */
+  for (
+    let index = 1;
+    index < lines.length;
+    index += 1
+  ) {
+    if (!lines[index].trim()) {
+      continue;
+    }
+
+    const columns =
+      lines[index].split("\t");
+
+    if (columns.length < 12) {
+      continue;
+    }
+
+    const level =
+      Number(columns[0]);
+
+    /*
+     * TSV-Level 5 entspricht einzelnen Wörtern.
+     */
+    if (level !== 5) {
+      continue;
+    }
+
+    const confidence =
+      Number(columns[10]);
+
+    const text =
+      columns
+        .slice(11)
+        .join("\t")
+        .trim();
+
+    if (
+      !text ||
+      !Number.isFinite(confidence) ||
+      confidence < 10
+    ) {
+      continue;
+    }
+
+    const left =
+      Number(columns[6]);
+
+    const top =
+      Number(columns[7]);
+
+    const width =
+      Number(columns[8]);
+
+    const height =
+      Number(columns[9]);
+
+    if (
+      !Number.isFinite(left) ||
+      !Number.isFinite(top) ||
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      continue;
+    }
+
+    words.push({
+      text,
+      confidence,
+      left,
+      top,
+      width,
+      height,
+
+      right:
+        left + width,
+
+      bottom:
+        top + height,
+
+      lineKey: [
+        columns[1],
+        columns[2],
+        columns[3],
+        columns[4]
+      ].join("-")
+    });
+  }
+
+  return words;
+}
+
+
+function normalizeOcrWord(value) {
+  return String(value || "")
+    .toUpperCase()
+    .trim();
+}
+
+
+function areWordsDirectlyAdjacent(
+  first,
+  second
+) {
+  if (!first || !second) {
+    return false;
+  }
+
+  /*
+   * Positiver Wert = sichtbarer Abstand.
+   * Negativer Wert = überlappende OCR-Rahmen.
+   */
+  const horizontalGap =
+    second.left - first.right;
+
+  const verticalOverlap =
+    Math.max(
+      0,
+      Math.min(
+        first.bottom,
+        second.bottom
+      ) -
+      Math.max(
+        first.top,
+        second.top
+      )
+    );
+
+  const overlapRatio =
+    verticalOverlap /
+    Math.max(
+      1,
+      Math.min(
+        first.height,
+        second.height
+      )
+    );
+
+  const secondCharacters =
+    Math.max(
+      1,
+      normalizeOcrWord(
+        second.text
+      ).length
+    );
+
+  const estimatedCharacterWidth =
+    second.width /
+    secondCharacters;
+
+  /*
+   * Erlaubt wird nur ein sehr kleiner Abstand.
+   * Ein echtes gedrucktes Leerzeichen sollte diesen
+   * Grenzwert normalerweise überschreiten.
+   */
+  const allowedGap =
+    Math.max(
+      3,
+      Math.min(
+        first.height * 0.24,
+        estimatedCharacterWidth * 0.70
+      )
+    );
+
+  return (
+    overlapRatio >= 0.55 &&
+    horizontalGap >= -allowedGap &&
+    horizontalGap <= allowedGap
+  );
+}
 
   normalizeManualCode = function normalizeManualVariableCode(value) {
   const normalized =
