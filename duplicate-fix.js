@@ -1,54 +1,60 @@
 "use strict";
 
-(() => {
-  const FIX_VERSION = "4.0";
+window.DuplicateFix = (() => {
+  const VERSION = "11.0";
 
   /*
-   * Die Erkennung ist absichtlich konservativ:
-   * Ein unsicherer zweiter Scan wird blockiert.
+   * Die Grenzwerte sind bewusst zurückhaltend.
+   *
+   * Zwei unterschiedliche Etiketten mit demselben
+   * Aufbau sollen nicht vorschnell blockiert werden.
    */
- const LIMITS = Object.freeze({
-  /*
-   * Nur Bilder mit nahezu identischer Struktur
-   * werden allein anhand des Bildes blockiert.
-   */
-  almostIdenticalVisual: 0.975,
+  const LIMITS = Object.freeze({
+    /*
+     * Allein anhand des Bildes nur bei nahezu
+     * vollständiger Übereinstimmung blockieren.
+     */
+    visualOnly:
+      0.995,
 
-  /*
-   * Hohe Textähnlichkeit benötigt zusätzlich
-   * eine deutliche visuelle Ähnlichkeit.
-   */
-  strongTextSimilarity: 0.88,
-  minimumVisualWithStrongText: 0.68,
+    /*
+     * Mehrere eindeutige gemeinsame Kennungen.
+     */
+    commonStrongRequired:
+      4,
 
-  /*
-   * Mittlere Textähnlichkeit wird nur bei
-   * sehr hoher Bildähnlichkeit berücksichtigt.
-   */
-  mediumTextSimilarity: 0.74,
-  minimumVisualWithMediumText: 0.84,
+    identifiersText:
+      0.80,
 
-  /*
-   * Ohne ausreichend OCR-Text wird nur noch
-   * bei extrem ähnlichen Bildern blockiert.
-   */
-  minimumVisualWithoutText: 0.95,
+    identifiersVisual:
+      0.74,
 
-  /*
-   * Mehrere echte Kennungen plus ähnlicher Bildaufbau.
-   */
-  minimumVisualWithCommonIdentifiers: 0.72
-});
+    /*
+     * Extrem hohe Gesamttextähnlichkeit.
+     */
+    veryStrongText:
+      0.94,
 
- const CODE_WHITELIST =
-  "D0123456789";
+    veryStrongTextVisual:
+      0.82,
 
-  const TEXT_WHITELIST =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.:/_()[]";
+    /*
+     * Noch strengere Kombination bei nur
+     * drei gemeinsamen eindeutigen Kennungen.
+     */
+    threeIdentifiersText:
+      0.90,
+
+    threeIdentifiersVisual:
+      0.80
+  });
+
 
   const GENERIC_WORDS = new Set([
     "BATCH",
     "BATCHNO",
+    "CHARGE",
+    "CHARGENNUMMER",
     "LOT",
     "LOTNO",
     "NUMBER",
@@ -65,610 +71,267 @@
     "NOTE",
     "LIEFERSCHEIN",
     "MADE",
-    "MATERIAL"
+    "MATERIAL",
+    "LABEL",
+    "ETIKETT",
+    "QUANTITY",
+    "MENGE",
+    "HENKEL",
+    "PACKING",
+    "VERPACKUNG",
+    "ADDRESS",
+    "ADRESSE",
+    "KILOGRAM",
+    "KILOGRAMM"
   ]);
 
-  /*
-   * Strenge D-Nummern-Regel:
-   *
-   * gültig:   D562708020
-   * ungültig: D 562708020
-   * ungültig: DA562708020
-   * ungültig: D5627O8020
-   * ungültig: D562708020A
-   * ungültig: D5627080201
-   */
-extractStrictDCodes = function extractStrictDCodesSimple(text) {
-  const normalizedText =
-    String(text || "")
-      .toUpperCase()
-      .replace(/\r/g, "")
-      .trim();
 
-  /*
-   * Der OCR-Text wird ausschließlich an Leerzeichen,
-   * Tabs und Zeilenumbrüchen getrennt.
-   *
-   * Gültig:
-   * D123
-   * D562708020
-   * D123456789012345
-   *
-   * Ungültig:
-   * D 123
-   * D-123
-   * DA123
-   * D123A
-   * D123-456
-   */
-  const tokens =
-    normalizedText
-      .split(/\s+/)
-      .filter(Boolean);
+  async function prepareScan(
+    file,
+    sourceCanvas
+  ) {
+    const fileDigest =
+      await calculateFileDigest(
+        file
+      );
 
-  const results =
-    new Set();
+    const visualSignature =
+      createVisualSignature(
+        sourceCanvas
+      );
 
-  for (const token of tokens) {
-    if (/^D[0-9]+$/.test(token)) {
-      results.add(token);
-    }
+    return {
+      version:
+        VERSION,
+
+      fileDigest,
+
+      visualSignature,
+
+      textSignature: null
+    };
   }
 
-  return [...results];
-};
-searchForDNumber =
-  async function searchForDNumberSimple(
-    sourceCanvas,
-    slotNumber
+
+  function precheck(
+    first,
+    second
   ) {
-    const passes =
-      createRecognitionPasses(sourceCanvas);
-
-    const voteMap =
-      new Map();
-
-    const rawResults = [];
-
-    for (
-      let index = 0;
-      index < passes.length;
-      index += 1
+    if (
+      first?.fileDigest &&
+      second?.fileDigest &&
+      first.fileDigest ===
+        second.fileDigest
     ) {
-      const pass =
-        passes[index];
+      return {
+        duplicate: true,
 
-      setStatus(
-        `Etikett ${slotNumber}: Prüfung ` +
-        `${index + 1} von ${passes.length} – ${pass.name}`,
-        "scanning"
-      );
+        exactFile: true,
 
-      /*
-       * Keine geometrische Verbindung mehr.
-       * Es wird ausschließlich der OCR-Text ausgewertet.
-       */
-      const recognition =
-        await state.worker.recognize(
-          pass.canvas
-        );
+        visualSimilarity:
+          1,
 
-      const text =
-        recognition?.data?.text || "";
+        textSimilarity:
+          null,
 
-      const confidence =
-        Number(
-          recognition?.data?.confidence || 0
-        );
+        commonStrong:
+          null,
 
-      const candidates =
-        extractStrictDCodes(text);
-
-      rawResults.push({
-        pass: pass.name,
-        confidence,
-        text: compactText(text),
-        candidates
-      });
-
-      appendDebug(
-        `\nEtikett ${slotNumber} – ${pass.name}\n` +
-        `Konfidenz: ${Math.round(confidence)} %\n` +
-        `OCR-Text: ${compactText(text)}\n` +
-        `Gültige D-Nummern: ${
-          candidates.join(", ") || "keine"
-        }\n`
-      );
-
-      for (const candidate of candidates) {
-        const current =
-          voteMap.get(candidate) || {
-            votes: 0,
-            confidenceSum: 0
-          };
-
-        current.votes += 1;
-        current.confidenceSum += confidence;
-
-        voteMap.set(
-          candidate,
-          current
-        );
-      }
-
-      const currentWinner =
-        chooseWinner(voteMap);
-
-      /*
-       * Derselbe Wert muss möglichst in mindestens
-       * zwei unterschiedlichen OCR-Prüfungen erscheinen.
-       */
-      if (
-        currentWinner &&
-        currentWinner.votes >= 2
-      ) {
-        return {
-          code: currentWinner.code,
-          votes: currentWinner.votes,
-          averageConfidence:
-            currentWinner.averageConfidence,
-          passes: rawResults
-        };
-      }
-
-      await delay(30);
+        reason:
+          "Es wurde exakt dieselbe Bilddatei wie bei Etikett 1 verwendet."
+      };
     }
 
-    const winner =
-      chooseWinner(voteMap);
+    const visualSimilarity =
+      compareVisualSignatures(
+        first?.visualSignature,
+        second?.visualSignature
+      );
 
-    if (!winner) {
+    if (
+      visualSimilarity >=
+      LIMITS.visualOnly
+    ) {
       return {
-        code: null,
-        votes: 0,
-        averageConfidence: 0,
-        passes: rawResults
+        duplicate: true,
+
+        exactFile: false,
+
+        visualSimilarity,
+
+        textSimilarity:
+          null,
+
+        commonStrong:
+          null,
+
+        reason:
+          "Das zweite Foto stimmt visuell nahezu vollständig mit Etikett 1 überein."
       };
     }
 
     return {
-      code: winner.code,
-      votes: winner.votes,
-      averageConfidence:
-        winner.averageConfidence,
-      passes: rawResults
+      duplicate: false,
+
+      exactFile: false,
+
+      visualSimilarity,
+
+      textSimilarity:
+        null,
+
+      commonStrong:
+        null,
+
+      reason:
+        "Die Bildvorprüfung ergab keinen sicheren doppelten Scan."
     };
-  };
- 
-
-  /*
-   * Positiver Wert = sichtbarer Abstand.
-   * Negativer Wert = überlappende OCR-Rahmen.
-   */
-  const horizontalGap =
-    second.left - first.right;
-
-  const verticalOverlap =
-    Math.max(
-      0,
-      Math.min(
-        first.bottom,
-        second.bottom
-      ) -
-      Math.max(
-        first.top,
-        second.top
-      )
-    );
-
-  const overlapRatio =
-    verticalOverlap /
-    Math.max(
-      1,
-      Math.min(
-        first.height,
-        second.height
-      )
-    );
-
-  const secondCharacters =
-    Math.max(
-      1,
-      normalizeOcrWord(
-        second.text
-      ).length
-    );
-
-  const estimatedCharacterWidth =
-    second.width /
-    secondCharacters;
-
-  /*
-   * Erlaubt wird nur ein sehr kleiner Abstand.
-   * Ein echtes gedrucktes Leerzeichen sollte diesen
-   * Grenzwert normalerweise überschreiten.
-   */
-  const allowedGap =
-    Math.max(
-      3,
-      Math.min(
-        first.height * 0.24,
-        estimatedCharacterWidth * 0.70
-      )
-    );
-
-  return (
-    overlapRatio >= 0.55 &&
-    horizontalGap >= -allowedGap &&
-    horizontalGap <= allowedGap
-  );
-}
-
-  normalizeManualCode =
-  function normalizeManualVariableCode(value) {
-    /*
-     * Nur Großschreibung und äußere Leerzeichen.
-     * Inhaltliche Fehler werden nicht automatisch entfernt.
-     */
-    return String(value || "")
-      .toUpperCase()
-      .trim();
-  };
-
-
-isValidCode =
-  function isValidVariableCode(value) {
-    /*
-     * D direkt gefolgt von mindestens einer Ziffer.
-     * Keine Leerzeichen, Buchstaben oder Trennzeichen.
-     */
-    return /^D[0-9]+$/.test(
-      String(value || "")
-        .toUpperCase()
-        .trim()
-    );
-  };
-
-  /*
-   * Die ursprünglichen Dateiauswahl-Listener rufen processFile
-   * dynamisch auf. Deshalb kann die Funktion hier ersetzt werden.
-   */
-  processFile = async function processFileWithDuplicateProtection(
-    file,
-    slotNumber
-  ) {
-    const slot =
-      slotNumber === 1
-        ? state.scan1
-        : state.scan2;
-
-    const preview =
-      slotNumber === 1
-        ? elements.preview1
-        : elements.preview2;
-
-    const placeholder =
-      slotNumber === 1
-        ? elements.placeholder1
-        : elements.placeholder2;
-
-    const codeInput =
-      slotNumber === 1
-        ? elements.code1
-        : elements.code2;
-
-    const info =
-      slotNumber === 1
-        ? elements.ocrInfo1
-        : elements.ocrInfo2;
-
-    const confirmButton =
-      slotNumber === 1
-        ? elements.confirm1
-        : elements.confirm2;
-
-    confirmButton.disabled = true;
-    codeInput.value = "";
-    info.textContent = "";
-
-    setStatus(
-      `Etikett ${slotNumber} wird vorbereitet …`,
-      "scanning"
-    );
-
-    try {
-      const image =
-        await loadImage(file);
-
-      const sourceCanvas =
-        drawImageToCanvas(
-          image,
-          elements.sourceCanvas,
-          2600
-        );
-
-      const fileDigest =
-        await calculateFileDigest(file);
-
-      const visualSignature =
-        createVisualSignature(sourceCanvas);
-
-      /*
-       * Erste Prüfung vor der OCR:
-       * Exakt dieselbe Datei oder nahezu identische Bildstruktur.
-       */
-      if (
-        slotNumber === 2 &&
-        state.scan1.fileDigest
-      ) {
-        if (
-          fileDigest ===
-          state.scan1.fileDigest
-        ) {
-          blockSecondScan(
-            "Es wurde exakt dieselbe Bilddatei wie bei Etikett 1 verwendet.",
-            {
-              exactFile: true,
-              visual: 1,
-              text: 1
-            }
-          );
-
-          return;
-        }
-
-        const preliminaryVisual =
-          compareVisualSignatures(
-            state.scan1.visualSignature,
-            visualSignature
-          );
-
-        appendDebug(
-          "\nDOPPEL-SCAN-VORPRÜFUNG\n" +
-          `Version: ${FIX_VERSION}\n` +
-          `Bildähnlichkeit: ${
-            formatPercent(preliminaryVisual)
-          }\n`
-        );
-
-        if (
-          preliminaryVisual >=
-          LIMITS.almostIdenticalVisual
-        ) {
-          blockSecondScan(
-            "Die Bildstruktur stimmt nahezu vollständig mit Etikett 1 überein.",
-            {
-              exactFile: false,
-              visual: preliminaryVisual,
-              text: null
-            }
-          );
-
-          return;
-        }
-      }
-
-      revokePreview(slot);
-
-      slot.previewUrl =
-        URL.createObjectURL(file);
-
-      preview.src = slot.previewUrl;
-      preview.classList.add("visible");
-      placeholder.classList.add("hidden");
-
-      slot.fileDigest = fileDigest;
-      slot.visualSignature = visualSignature;
-      slot.confirmed = false;
-      slot.code = null;
-
-      await initializeWorker();
-
-      /*
-       * D-Nummer zunächst mit der bisherigen eingeschränkten
-       * Zeichenauswahl suchen. Die Auswertung ist trotzdem streng.
-       */
-      await configureCodeRecognition();
-
-      const result =
-        await searchForDNumber(
-          sourceCanvas,
-          slotNumber
-        );
-
-      /*
-       * Zusätzlich wird einmal der allgemeine Etikettentext gelesen.
-       * Dieser Text wird ausschließlich lokal als Fingerabdruck
-       * zur Erkennung desselben Etiketts verwendet.
-       */
-      const identityText =
-        await readIdentityText(
-          sourceCanvas,
-          slotNumber
-        );
-
-      slot.identitySignature =
-        createTextSignature(identityText);
-
-      await configureCodeRecognition();
-
-      if (slotNumber === 2) {
-        const visualSimilarity =
-          compareVisualSignatures(
-            state.scan1.visualSignature,
-            visualSignature
-          );
-
-        const textComparison =
-          compareTextSignatures(
-            state.scan1.identitySignature,
-            slot.identitySignature
-          );
-
-        const decision =
-          evaluateDuplicate(
-            visualSimilarity,
-            textComparison
-          );
-
-        appendDebug(
-          "\nDOPPEL-SCAN-ENTSCHEIDUNG\n" +
-          `Bildähnlichkeit: ${
-            formatPercent(visualSimilarity)
-          }\n` +
-          `Textähnlichkeit: ${
-            textComparison.available
-              ? formatPercent(
-                  textComparison.similarity
-                )
-              : "nicht ausreichend"
-          }\n` +
-          `Gemeinsame Kennungen: ${
-            textComparison.commonStrong
-          }\n` +
-          `Ergebnis: ${
-            decision.duplicate
-              ? "BLOCKIERT"
-              : "AKZEPTIERT"
-          }\n` +
-          `Grund: ${decision.reason}\n`
-        );
-
-        if (decision.duplicate) {
-          blockSecondScan(
-            decision.reason,
-            {
-              exactFile: false,
-              visual: visualSimilarity,
-              text:
-                textComparison.available
-                  ? textComparison.similarity
-                  : null
-            }
-          );
-
-          return;
-        }
-      }
-
-      appendDebug(
-        `\nERGEBNIS ETIKETT ${slotNumber}\n` +
-        JSON.stringify(result, null, 2)
-      );
-
-      if (!result.code) {
-        slot.code = null;
-
-        info.textContent =
-          "Keine gültige D-Nummer erkannt. " +
-          "Erlaubt ist ausschließlich D direkt gefolgt " +
-          "von neun Ziffern, zum Beispiel D562708020.";
-
-        setStatus(
-          `Auf Etikett ${slotNumber} wurde keine gültige D-Nummer gefunden.`,
-          "error"
-        );
-
-        codeInput.focus();
-        return;
-      }
-
-      slot.code = result.code;
-      codeInput.value = result.code;
-      confirmButton.disabled = false;
-
-      info.textContent =
-        `${result.votes} OCR-Prüfung(en) unterstützten diesen Wert. ` +
-        "D und die neun Ziffern wurden ohne Zwischenraum erkannt.";
-
-      setStatus(
-        `Etikett ${slotNumber}: ${result.code} erkannt. ` +
-        "Bitte kontrollieren und übernehmen.",
-        "success"
-      );
-    } catch (error) {
-      console.error(error);
-
-      setStatus(
-        error.message || String(error),
-        "error"
-      );
-
-      info.textContent =
-        "Foto erneut aufnehmen oder die D-Nummer " +
-        "im Format D123456789 manuell eintragen.";
-    }
-  };
-
-
-  async function configureCodeRecognition() {
-    await state.worker.setParameters({
-      tessedit_char_whitelist:
-        CODE_WHITELIST,
-
-      tessedit_pageseg_mode: "11",
-
-      preserve_interword_spaces: "1",
-
-      user_defined_dpi: "300"
-    });
   }
 
 
-  async function readIdentityText(
-    sourceCanvas,
-    slotNumber
+  function finalCheck(
+    first,
+    second
   ) {
-    try {
-      setStatus(
-        `Etikett ${slotNumber}: Etikettenidentität wird geprüft …`,
-        "scanning"
+    const visualSimilarity =
+      compareVisualSignatures(
+        first?.visualSignature,
+        second?.visualSignature
       );
 
-      await state.worker.setParameters({
-        tessedit_char_whitelist:
-          TEXT_WHITELIST,
-
-        tessedit_pageseg_mode: "11",
-
-        preserve_interword_spaces: "1",
-
-        user_defined_dpi: "300"
-      });
-
-      const prepared =
-        createPreparedCrop(
-          sourceCanvas,
-          {
-            x: 0,
-            y: 0,
-            width: sourceCanvas.width,
-            height: sourceCanvas.height
-          },
-          false
-        );
-
-      const recognition =
-        await state.worker.recognize(prepared);
-
-      const text =
-        recognition?.data?.text || "";
-
-      appendDebug(
-        `\nIDENTITÄTSTEXT ETIKETT ${slotNumber}\n` +
-        `${compactText(text)}\n`
+    const textComparison =
+      compareTextSignatures(
+        first?.textSignature,
+        second?.textSignature
       );
 
-      return text;
-    } catch (error) {
-      appendDebug(
-        `\nIdentitätstext nicht verfügbar: ${
-          error.message || String(error)
-        }\n`
-      );
+    const textSimilarity =
+      textComparison.similarity;
 
-      return "";
+    const commonStrong =
+      textComparison.commonStrong;
+
+    /*
+     * Nahezu identischer Bildaufbau.
+     */
+    if (
+      visualSimilarity >=
+      LIMITS.visualOnly
+    ) {
+      return {
+        duplicate: true,
+
+        exactFile: false,
+
+        visualSimilarity,
+
+        textSimilarity,
+
+        commonStrong,
+
+        reason:
+          "Das zweite Foto stimmt visuell nahezu vollständig mit Etikett 1 überein."
+      };
     }
+
+    /*
+     * Mindestens vier gemeinsame eindeutige Kennungen,
+     * deutliche Textähnlichkeit und ähnlicher Bildaufbau.
+     */
+    if (
+      textComparison.available &&
+      commonStrong >=
+        LIMITS.commonStrongRequired &&
+      textSimilarity >=
+        LIMITS.identifiersText &&
+      visualSimilarity >=
+        LIMITS.identifiersVisual
+    ) {
+      return {
+        duplicate: true,
+
+        exactFile: false,
+
+        visualSimilarity,
+
+        textSimilarity,
+
+        commonStrong,
+
+        reason:
+          "Mehrere eindeutige Nummern und der Bildaufbau stimmen mit Etikett 1 überein."
+      };
+    }
+
+    /*
+     * Drei eindeutige Kennungen reichen nur,
+     * wenn Text und Bild zusätzlich sehr ähnlich sind.
+     */
+    if (
+      textComparison.available &&
+      commonStrong >= 3 &&
+      textSimilarity >=
+        LIMITS.threeIdentifiersText &&
+      visualSimilarity >=
+        LIMITS.threeIdentifiersVisual
+    ) {
+      return {
+        duplicate: true,
+
+        exactFile: false,
+
+        visualSimilarity,
+
+        textSimilarity,
+
+        commonStrong,
+
+        reason:
+          "Drei eindeutige Kennungen sowie Text und Bild stimmen sehr stark mit Etikett 1 überein."
+      };
+    }
+
+    /*
+     * Extrem hohe Ähnlichkeit des gesamten Begleittexts
+     * plus deutliche visuelle Übereinstimmung.
+     */
+    if (
+      textComparison.available &&
+      textSimilarity >=
+        LIMITS.veryStrongText &&
+      visualSimilarity >=
+        LIMITS.veryStrongTextVisual
+    ) {
+      return {
+        duplicate: true,
+
+        exactFile: false,
+
+        visualSimilarity,
+
+        textSimilarity,
+
+        commonStrong,
+
+        reason:
+          "Etikettentext und Bildstruktur entsprechen sehr wahrscheinlich erneut Etikett 1."
+      };
+    }
+
+    return {
+      duplicate: false,
+
+      exactFile: false,
+
+      visualSimilarity,
+
+      textSimilarity,
+
+      commonStrong,
+
+      reason:
+        "Etikett 2 unterscheidet sich ausreichend von Etikett 1."
+    };
   }
 
 
@@ -697,6 +360,9 @@ isValidCode =
         .join("");
     }
 
+    /*
+     * Fallback für ältere Browser.
+     */
     return [
       file.name,
       file.size,
@@ -706,44 +372,114 @@ isValidCode =
   }
 
 
-  function createVisualSignature(sourceCanvas) {
-    const bounds =
-      detectLabelBounds(sourceCanvas);
+  function createVisualSignature(
+    sourceCanvas
+  ) {
+    const width =
+      sourceCanvas.width;
 
-    const variants = [
-      -7,
-      0,
-      7
-    ].map(angle =>
-      createVisualVariant(
-        sourceCanvas,
-        bounds,
-        angle
-      )
+    const height =
+      sourceCanvas.height;
+
+    const regions = [
+      {
+        name:
+          "full",
+
+        weight:
+          0.40,
+
+        x: 0,
+        y: 0,
+        width,
+        height
+      },
+
+      {
+        name:
+          "center",
+
+        weight:
+          0.30,
+
+        x:
+          width * 0.08,
+
+        y:
+          height * 0.08,
+
+        width:
+          width * 0.84,
+
+        height:
+          height * 0.84
+      },
+
+      {
+        name:
+          "top",
+
+        weight:
+          0.15,
+
+        x: 0,
+        y: 0,
+        width,
+
+        height:
+          height * 0.58
+      },
+
+      {
+        name:
+          "bottom",
+
+        weight:
+          0.15,
+
+        x: 0,
+
+        y:
+          height * 0.42,
+
+        width,
+
+        height:
+          height * 0.58
+      }
+    ];
+
+    return regions.map(
+      region => ({
+        name:
+          region.name,
+
+        weight:
+          region.weight,
+
+        fingerprint:
+          createRegionFingerprint(
+            sourceCanvas,
+            region
+          )
+      })
     );
-
-    return {
-      bounds,
-      variants
-    };
   }
 
 
-  /*
-   * Sucht im verkleinerten Bild nach der größten zusammenhängenden,
-   * hellen und relativ farbneutralen Fläche.
-   *
-   * Dadurch wird möglichst das Etikett und nicht das gesamte
-   * Kamerafoto miteinander verglichen.
-   */
-  function detectLabelBounds(sourceCanvas) {
-    const analysisSize = 96;
+  function createRegionFingerprint(
+    sourceCanvas,
+    region
+  ) {
+    const size = 32;
 
     const canvas =
-      document.createElement("canvas");
+      document.createElement(
+        "canvas"
+      );
 
-    canvas.width = analysisSize;
-    canvas.height = analysisSize;
+    canvas.width = size;
+    canvas.height = size;
 
     const context =
       canvas.getContext(
@@ -753,403 +489,53 @@ isValidCode =
         }
       );
 
+    context.imageSmoothingEnabled =
+      true;
+
+    context.imageSmoothingQuality =
+      "high";
+
     context.drawImage(
       sourceCanvas,
+
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+
       0,
       0,
-      analysisSize,
-      analysisSize
+      size,
+      size
     );
 
     const data =
       context.getImageData(
         0,
         0,
-        analysisSize,
-        analysisSize
-      ).data;
-
-    const luminances = [];
-    const mask =
-      new Uint8Array(
-        analysisSize * analysisSize
-      );
-
-    for (
-      let index = 0;
-      index < data.length;
-      index += 4
-    ) {
-      const red = data[index];
-      const green = data[index + 1];
-      const blue = data[index + 2];
-
-      const maximum =
-        Math.max(red, green, blue);
-
-      const minimum =
-        Math.min(red, green, blue);
-
-      const luminance =
-        red * 0.299 +
-        green * 0.587 +
-        blue * 0.114;
-
-      luminances.push(luminance);
-
-      const saturation =
-        maximum - minimum;
-
-      mask[index / 4] =
-        luminance >= 130 &&
-        saturation <= 105
-          ? 1
-          : 0;
-    }
-
-    const dynamicThreshold =
-      Math.max(
-        120,
-        percentileValue(
-          luminances,
-          58
-        )
-      );
-
-    for (
-      let pixel = 0;
-      pixel < mask.length;
-      pixel += 1
-    ) {
-      const dataIndex = pixel * 4;
-
-      const red = data[dataIndex];
-      const green = data[dataIndex + 1];
-      const blue = data[dataIndex + 2];
-
-      const luminance =
-        red * 0.299 +
-        green * 0.587 +
-        blue * 0.114;
-
-      const saturation =
-        Math.max(red, green, blue) -
-        Math.min(red, green, blue);
-
-      mask[pixel] =
-        luminance >= dynamicThreshold &&
-        saturation <= 110
-          ? 1
-          : 0;
-    }
-
-    const visited =
-      new Uint8Array(mask.length);
-
-    let best = null;
-
-    for (
-      let start = 0;
-      start < mask.length;
-      start += 1
-    ) {
-      if (
-        !mask[start] ||
-        visited[start]
-      ) {
-        continue;
-      }
-
-      const stack = [start];
-
-      visited[start] = 1;
-
-      let area = 0;
-      let minX = analysisSize;
-      let minY = analysisSize;
-      let maxX = 0;
-      let maxY = 0;
-
-      while (stack.length) {
-        const current =
-          stack.pop();
-
-        const x =
-          current % analysisSize;
-
-        const y =
-          Math.floor(
-            current / analysisSize
-          );
-
-        area += 1;
-
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-
-        const neighbours = [
-          current - 1,
-          current + 1,
-          current - analysisSize,
-          current + analysisSize
-        ];
-
-        for (const neighbour of neighbours) {
-          if (
-            neighbour < 0 ||
-            neighbour >= mask.length ||
-            visited[neighbour] ||
-            !mask[neighbour]
-          ) {
-            continue;
-          }
-
-          const neighbourX =
-            neighbour % analysisSize;
-
-          if (
-            Math.abs(neighbourX - x) > 1
-          ) {
-            continue;
-          }
-
-          visited[neighbour] = 1;
-          stack.push(neighbour);
-        }
-      }
-
-      const width =
-        maxX - minX + 1;
-
-      const height =
-        maxY - minY + 1;
-
-      const rectangleArea =
-        width * height;
-
-      const rectangularity =
-        area /
-        Math.max(1, rectangleArea);
-
-      const areaRatio =
-        area /
-        mask.length;
-
-      if (
-        areaRatio < 0.025 ||
-        width < 18 ||
-        height < 18
-      ) {
-        continue;
-      }
-
-      const centerX =
-        (minX + maxX) / 2;
-
-      const centerY =
-        (minY + maxY) / 2;
-
-      const centerDistance =
-        Math.hypot(
-          centerX - analysisSize / 2,
-          centerY - analysisSize / 2
-        ) /
-        (analysisSize * 0.71);
-
-      const centerFactor =
-        1.15 -
-        Math.min(1, centerDistance) * 0.25;
-
-      const score =
-        area *
-        rectangularity *
-        centerFactor;
-
-      if (
-        !best ||
-        score > best.score
-      ) {
-        best = {
-          minX,
-          minY,
-          maxX,
-          maxY,
-          areaRatio,
-          score
-        };
-      }
-    }
-
-    if (
-      !best ||
-      best.areaRatio > 0.92
-    ) {
-      return {
-        x: 0,
-        y: 0,
-        width: sourceCanvas.width,
-        height: sourceCanvas.height
-      };
-    }
-
-    const padding = 4;
-
-    const minX =
-      Math.max(
-        0,
-        best.minX - padding
-      );
-
-    const minY =
-      Math.max(
-        0,
-        best.minY - padding
-      );
-
-    const maxX =
-      Math.min(
-        analysisSize - 1,
-        best.maxX + padding
-      );
-
-    const maxY =
-      Math.min(
-        analysisSize - 1,
-        best.maxY + padding
-      );
-
-    return {
-      x:
-        minX /
-        analysisSize *
-        sourceCanvas.width,
-
-      y:
-        minY /
-        analysisSize *
-        sourceCanvas.height,
-
-      width:
-        (maxX - minX + 1) /
-        analysisSize *
-        sourceCanvas.width,
-
-      height:
-        (maxY - minY + 1) /
-        analysisSize *
-        sourceCanvas.height
-    };
-  }
-
-
-  function createVisualVariant(
-    sourceCanvas,
-    bounds,
-    angle
-  ) {
-    const normalizedSize = 192;
-
-    const normalized =
-      document.createElement("canvas");
-
-    normalized.width = normalizedSize;
-    normalized.height = normalizedSize;
-
-    const context =
-      normalized.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
-
-    context.fillStyle = "white";
-    context.fillRect(
-      0,
-      0,
-      normalizedSize,
-      normalizedSize
-    );
-
-    context.save();
-
-    context.translate(
-      normalizedSize / 2,
-      normalizedSize / 2
-    );
-
-    context.rotate(
-      angle *
-      Math.PI /
-      180
-    );
-
-    context.drawImage(
-      sourceCanvas,
-
-      bounds.x,
-      bounds.y,
-      bounds.width,
-      bounds.height,
-
-      -normalizedSize / 2,
-      -normalizedSize / 2,
-      normalizedSize,
-      normalizedSize
-    );
-
-    context.restore();
-
-    const sampleSize = 32;
-
-    const sample =
-      document.createElement("canvas");
-
-    sample.width = sampleSize;
-    sample.height = sampleSize;
-
-    const sampleContext =
-      sample.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
-
-    sampleContext.drawImage(
-      normalized,
-      0,
-      0,
-      sampleSize,
-      sampleSize
-    );
-
-    const imageData =
-      sampleContext.getImageData(
-        0,
-        0,
-        sampleSize,
-        sampleSize
+        size,
+        size
       ).data;
 
     const grayscale = [];
 
     for (
       let index = 0;
-      index < imageData.length;
+      index < data.length;
       index += 4
     ) {
       grayscale.push(
-        imageData[index] * 0.299 +
-        imageData[index + 1] * 0.587 +
-        imageData[index + 2] * 0.114
+        data[index] *
+          0.299 +
+        data[index + 1] *
+          0.587 +
+        data[index + 2] *
+          0.114
       );
     }
 
     const low =
-      percentileValue(
+      percentile(
         grayscale,
         5
       );
@@ -1157,36 +543,47 @@ isValidCode =
     const high =
       Math.max(
         low + 20,
-        percentileValue(
+
+        percentile(
           grayscale,
           95
         )
       );
 
-    const normalizedGray =
-      grayscale.map(value =>
-        Math.max(
-          0,
-          Math.min(
-            1,
-            (value - low) /
-            (high - low)
+    const normalized =
+      grayscale.map(
+        value =>
+          Math.max(
+            0,
+
+            Math.min(
+              1,
+
+              (
+                value -
+                low
+              ) /
+              (
+                high -
+                low
+              )
+            )
           )
-        )
       );
 
     const median =
-      percentileValue(
-        normalizedGray,
+      percentile(
+        normalized,
         50
       );
 
     const averageHash =
-      normalizedGray
-        .map(value =>
-          value >= median
-            ? "1"
-            : "0"
+      normalized
+        .map(
+          value =>
+            value >= median
+              ? "1"
+              : "0"
         )
         .join("");
 
@@ -1194,22 +591,22 @@ isValidCode =
 
     for (
       let y = 0;
-      y < sampleSize;
+      y < size;
       y += 1
     ) {
       for (
         let x = 0;
-        x < sampleSize - 1;
+        x < size - 1;
         x += 1
       ) {
         const left =
-          normalizedGray[
-            y * sampleSize + x
+          normalized[
+            y * size + x
           ];
 
         const right =
-          normalizedGray[
-            y * sampleSize + x + 1
+          normalized[
+            y * size + x + 1
           ];
 
         differenceHash +=
@@ -1221,32 +618,36 @@ isValidCode =
 
     const edges =
       new Array(
-        sampleSize * sampleSize
+        size * size
       ).fill(0);
 
     for (
       let y = 1;
-      y < sampleSize - 1;
+      y < size - 1;
       y += 1
     ) {
       for (
         let x = 1;
-        x < sampleSize - 1;
+        x < size - 1;
         x += 1
       ) {
         const index =
-          y * sampleSize + x;
+          y * size + x;
 
         const horizontal =
-          normalizedGray[index + 1] -
-          normalizedGray[index - 1];
+          normalized[
+            index + 1
+          ] -
+          normalized[
+            index - 1
+          ];
 
         const vertical =
-          normalizedGray[
-            index + sampleSize
+          normalized[
+            index + size
           ] -
-          normalizedGray[
-            index - sampleSize
+          normalized[
+            index - size
           ];
 
         edges[index] =
@@ -1258,77 +659,59 @@ isValidCode =
     }
 
     const edgeThreshold =
-      percentileValue(
+      percentile(
         edges,
         68
       );
 
     const edgeHash =
       edges
-        .map(value =>
-          value >= edgeThreshold
-            ? "1"
-            : "0"
+        .map(
+          value =>
+            value >= edgeThreshold
+              ? "1"
+              : "0"
         )
         .join("");
-
-    const rowProfile =
-      new Array(sampleSize).fill(0);
-
-    const columnProfile =
-      new Array(sampleSize).fill(0);
-
-    for (
-      let y = 0;
-      y < sampleSize;
-      y += 1
-    ) {
-      for (
-        let x = 0;
-        x < sampleSize;
-        x += 1
-      ) {
-        const value =
-          edges[
-            y * sampleSize + x
-          ];
-
-        rowProfile[y] += value;
-        columnProfile[x] += value;
-      }
-    }
 
     const histogram =
       new Array(16).fill(0);
 
-    for (const value of normalizedGray) {
+    for (
+      const value
+      of normalized
+    ) {
       const bin =
         Math.min(
           15,
-          Math.floor(value * 16)
+          Math.floor(
+            value * 16
+          )
         );
 
       histogram[bin] += 1;
     }
 
     const total =
-      normalizedGray.length;
+      normalized.length;
 
     return {
-      grayscale: normalizedGray,
+      size,
+
+      grayscale:
+        normalized,
+
       averageHash,
+
       differenceHash,
+
       edgeHash,
 
-      rowProfile:
-        normalizeVector(rowProfile),
-
-      columnProfile:
-        normalizeVector(columnProfile),
-
       histogram:
-        histogram.map(value =>
-          value / total
+        histogram.map(
+          value =>
+            value /
+            total
         )
     };
   }
@@ -1339,46 +722,74 @@ isValidCode =
     second
   ) {
     if (
-      !first?.variants ||
-      !second?.variants
+      !Array.isArray(first) ||
+      !Array.isArray(second) ||
+      first.length !== second.length
     ) {
       return 0;
     }
 
-    let best = 0;
+    let weightedScore = 0;
+    let totalWeight = 0;
 
     for (
-      const firstVariant
-      of first.variants
+      let index = 0;
+      index < first.length;
+      index += 1
     ) {
-      for (
-        const secondVariant
-        of second.variants
+      const firstRegion =
+        first[index];
+
+      const secondRegion =
+        second[index];
+
+      if (
+        firstRegion.name !==
+        secondRegion.name
       ) {
-        best =
-          Math.max(
-            best,
-            compareVisualVariants(
-              firstVariant,
-              secondVariant
-            )
-          );
+        continue;
       }
+
+      const weight =
+        Number(
+          firstRegion.weight || 0
+        );
+
+      const similarity =
+        compareRegionFingerprints(
+          firstRegion.fingerprint,
+          secondRegion.fingerprint
+        );
+
+      weightedScore +=
+        similarity *
+        weight;
+
+      totalWeight +=
+        weight;
     }
 
-    return best;
+    return weightedScore /
+      Math.max(
+        0.0001,
+        totalWeight
+      );
   }
 
 
-  function compareVisualVariants(
+  function compareRegionFingerprints(
     first,
     second
   ) {
+    if (!first || !second) {
+      return 0;
+    }
+
     const grayscaleSimilarity =
-      bestShiftedCorrelation(
+      bestShiftedGrayscaleSimilarity(
         first.grayscale,
         second.grayscale,
-        32,
+        first.size,
         2
       );
 
@@ -1400,18 +811,6 @@ isValidCode =
         second.edgeHash
       );
 
-    const profileSimilarity =
-      (
-        cosineSimilarity(
-          first.rowProfile,
-          second.rowProfile
-        ) +
-        cosineSimilarity(
-          first.columnProfile,
-          second.columnProfile
-        )
-      ) / 2;
-
     const histogramSimilarity =
       histogramIntersection(
         first.histogram,
@@ -1419,22 +818,39 @@ isValidCode =
       );
 
     return (
-      grayscaleSimilarity * 0.31 +
-      averageHashSimilarity * 0.12 +
-      differenceHashSimilarity * 0.15 +
-      edgeHashSimilarity * 0.21 +
-      profileSimilarity * 0.13 +
-      histogramSimilarity * 0.08
+      grayscaleSimilarity *
+        0.42 +
+
+      averageHashSimilarity *
+        0.13 +
+
+      differenceHashSimilarity *
+        0.14 +
+
+      edgeHashSimilarity *
+        0.21 +
+
+      histogramSimilarity *
+        0.10
     );
   }
 
 
-  function bestShiftedCorrelation(
+  function bestShiftedGrayscaleSimilarity(
     first,
     second,
-    width,
+    size,
     maximumShift
   ) {
+    if (
+      !Array.isArray(first) ||
+      !Array.isArray(second) ||
+      first.length !== size * size ||
+      second.length !== size * size
+    ) {
+      return 0;
+    }
+
     let best = 0;
 
     for (
@@ -1447,141 +863,83 @@ isValidCode =
         shiftX <= maximumShift;
         shiftX += 1
       ) {
-        const firstValues = [];
-        const secondValues = [];
+        let difference = 0;
+        let count = 0;
 
         for (
           let y = 0;
-          y < width;
+          y < size;
           y += 1
         ) {
-          const otherY =
+          const secondY =
             y + shiftY;
 
           if (
-            otherY < 0 ||
-            otherY >= width
+            secondY < 0 ||
+            secondY >= size
           ) {
             continue;
           }
 
           for (
             let x = 0;
-            x < width;
+            x < size;
             x += 1
           ) {
-            const otherX =
+            const secondX =
               x + shiftX;
 
             if (
-              otherX < 0 ||
-              otherX >= width
+              secondX < 0 ||
+              secondX >= size
             ) {
               continue;
             }
 
-            firstValues.push(
+            const firstValue =
               first[
-                y * width + x
-              ]
-            );
+                y * size + x
+              ];
 
-            secondValues.push(
+            const secondValue =
               second[
-                otherY * width +
-                otherX
-              ]
-            );
+                secondY *
+                size +
+                secondX
+              ];
+
+            difference +=
+              Math.abs(
+                firstValue -
+                secondValue
+              );
+
+            count += 1;
           }
         }
+
+        if (!count) {
+          continue;
+        }
+
+        const similarity =
+          Math.max(
+            0,
+
+            1 -
+            difference /
+            count
+          );
 
         best =
           Math.max(
             best,
-            pearsonSimilarity(
-              firstValues,
-              secondValues
-            )
+            similarity
           );
       }
     }
 
     return best;
-  }
-
-
-  function pearsonSimilarity(
-    first,
-    second
-  ) {
-    if (
-      !first.length ||
-      first.length !== second.length
-    ) {
-      return 0;
-    }
-
-    const firstMean =
-      first.reduce(
-        (sum, value) =>
-          sum + value,
-        0
-      ) /
-      first.length;
-
-    const secondMean =
-      second.reduce(
-        (sum, value) =>
-          sum + value,
-        0
-      ) /
-      second.length;
-
-    let numerator = 0;
-    let firstVariance = 0;
-    let secondVariance = 0;
-
-    for (
-      let index = 0;
-      index < first.length;
-      index += 1
-    ) {
-      const firstDelta =
-        first[index] - firstMean;
-
-      const secondDelta =
-        second[index] - secondMean;
-
-      numerator +=
-        firstDelta * secondDelta;
-
-      firstVariance +=
-        firstDelta * firstDelta;
-
-      secondVariance +=
-        secondDelta * secondDelta;
-    }
-
-    const denominator =
-      Math.sqrt(
-        firstVariance *
-        secondVariance
-      );
-
-    if (!denominator) {
-      return 0;
-    }
-
-    const correlation =
-      numerator / denominator;
-
-    return Math.max(
-      0,
-      Math.min(
-        1,
-        (correlation + 1) / 2
-      )
-    );
   }
 
 
@@ -1612,59 +970,8 @@ isValidCode =
       }
     }
 
-    return equal / first.length;
-  }
-
-
-  function normalizeVector(vector) {
-    const magnitude =
-      Math.sqrt(
-        vector.reduce(
-          (sum, value) =>
-            sum + value * value,
-          0
-        )
-      );
-
-    if (!magnitude) {
-      return vector.map(() => 0);
-    }
-
-    return vector.map(
-      value =>
-        value / magnitude
-    );
-  }
-
-
-  function cosineSimilarity(
-    first,
-    second
-  ) {
-    if (
-      !first ||
-      !second ||
-      first.length !== second.length
-    ) {
-      return 0;
-    }
-
-    let dot = 0;
-
-    for (
-      let index = 0;
-      index < first.length;
-      index += 1
-    ) {
-      dot +=
-        first[index] *
-        second[index];
-    }
-
-    return Math.max(
-      0,
-      Math.min(1, dot)
-    );
+    return equal /
+      first.length;
   }
 
 
@@ -1673,8 +980,8 @@ isValidCode =
     second
   ) {
     if (
-      !first ||
-      !second ||
+      !Array.isArray(first) ||
+      !Array.isArray(second) ||
       first.length !== second.length
     ) {
       return 0;
@@ -1687,14 +994,16 @@ isValidCode =
       index < first.length;
       index += 1
     ) {
-      intersection += Math.min(
-        first[index],
-        second[index]
-      );
+      intersection +=
+        Math.min(
+          first[index],
+          second[index]
+        );
     }
 
     return Math.max(
       0,
+
       Math.min(
         1,
         intersection
@@ -1704,57 +1013,80 @@ isValidCode =
 
 
   function createTextSignature(text) {
-    const cleaned =
+    /*
+     * Die OCR-Wörter bleiben voneinander getrennt.
+     * Es werden keine Nummern verbunden.
+     */
+    const rawTokens =
       String(text || "")
         .toUpperCase()
-        .replace(
-  /(?:^|[^A-Z0-9])D[0-9]+(?![A-Z0-9])/g,
-  " "
-)
-        .replace(/[^A-Z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    if (!cleaned) {
-      return {
-        tokens: [],
-        strongTokens: []
-      };
-    }
+        .replace(/\r/g, "")
+        .split(/\s+/)
+        .map(
+          token =>
+            token.replace(
+              /^[^A-Z0-9]+|[^A-Z0-9]+$/g,
+              ""
+            )
+        )
+        .filter(Boolean);
 
     const tokens =
-      [...new Set(
-        cleaned
-          .split(" ")
-          .filter(token =>
-            token.length >= 3 ||
-            /^[0-9]{4,}$/.test(token)
-          )
-      )];
+      [
+        ...new Set(
+          rawTokens
+            /*
+             * Die D-Nummer wird aus dem Identitätsvergleich
+             * entfernt, da zwei passende Etiketten dieselbe
+             * D-Nummer besitzen sollen.
+             */
+            .filter(
+              token =>
+                !/^D[0-9]+$/.test(
+                  token
+                )
+            )
 
-   const strongTokens =
-  tokens.filter(token => {
-    /*
-     * Allgemeine Etikettenbegriffe sind keine
-     * eindeutigen Identitätsmerkmale.
-     */
-    if (GENERIC_WORDS.has(token)) {
-      return false;
-    }
+            .filter(
+              token =>
+                token.length >= 3 ||
+                /^[0-9]{4,}$/.test(
+                  token
+                )
+            )
+        )
+      ];
 
-    /*
-     * Lange reine Zahlen oder gemischte Artikel-
-     * und Chargencodes sind echte Kennungen.
-     */
-    return (
-      /^[0-9]{5,}$/.test(token) ||
-      (
-        token.length >= 5 &&
-        /[A-Z]/.test(token) &&
-        /[0-9]/.test(token)
-      )
-    );
-  });
+    const strongTokens =
+      tokens.filter(
+        token => {
+          if (
+            GENERIC_WORDS.has(
+              token
+            )
+          ) {
+            return false;
+          }
+
+          /*
+           * Eindeutige Kennungen:
+           *
+           * - reine Zahlen mit mindestens fünf Stellen
+           * - gemischte Buchstaben-/Zahlencodes
+           */
+          return (
+            /^[0-9]{5,}$/.test(
+              token
+            ) ||
+
+            (
+              token.length >= 5 &&
+              /[A-Z]/.test(token) &&
+              /[0-9]/.test(token)
+            )
+          );
+        }
+      );
 
     return {
       tokens,
@@ -1768,10 +1100,14 @@ isValidCode =
     second
   ) {
     const firstTokens =
-      new Set(first?.tokens || []);
+      new Set(
+        first?.tokens || []
+      );
 
     const secondTokens =
-      new Set(second?.tokens || []);
+      new Set(
+        second?.tokens || []
+      );
 
     if (
       firstTokens.size < 3 ||
@@ -1791,19 +1127,21 @@ isValidCode =
       ]);
 
     let unionWeight = 0;
-    let commonWeight = 0;
+    let intersectionWeight = 0;
 
     for (const token of union) {
       const weight =
         tokenWeight(token);
 
-      unionWeight += weight;
+      unionWeight +=
+        weight;
 
       if (
         firstTokens.has(token) &&
         secondTokens.has(token)
       ) {
-        commonWeight += weight;
+        intersectionWeight +=
+          weight;
       }
     }
 
@@ -1813,9 +1151,12 @@ isValidCode =
       );
 
     const commonStrong =
-      (first?.strongTokens || [])
-        .filter(token =>
-          secondStrong.has(token)
+      (
+        first?.strongTokens || []
+      )
+        .filter(
+          token =>
+            secondStrong.has(token)
         )
         .length;
 
@@ -1823,8 +1164,11 @@ isValidCode =
       available: true,
 
       similarity:
-        commonWeight /
-        Math.max(1, unionWeight),
+        intersectionWeight /
+        Math.max(
+          1,
+          unionWeight
+        ),
 
       commonStrong
     };
@@ -1832,130 +1176,44 @@ isValidCode =
 
 
   function tokenWeight(token) {
-    if (/^[0-9]{4,}$/.test(token)) {
+    if (
+      GENERIC_WORDS.has(token)
+    ) {
+      return 0.2;
+    }
+
+    if (
+      /^[0-9]{5,}$/.test(token)
+    ) {
       return 4;
     }
 
     if (
+      token.length >= 5 &&
       /[A-Z]/.test(token) &&
       /[0-9]/.test(token)
     ) {
       return 3;
     }
 
-    if (GENERIC_WORDS.has(token)) {
-      return 0.35;
-    }
-
-    if (token.length >= 7) {
-      return 1.6;
+    if (
+      token.length >= 7
+    ) {
+      return 1.5;
     }
 
     return 1;
   }
 
 
- function evaluateDuplicate(
-  visual,
-  textComparison
-) {
-  const textAvailable =
-    Boolean(textComparison?.available);
-
-  const textSimilarity =
-    Number(
-      textComparison?.similarity || 0
-    );
-
-  const commonStrong =
-    Number(
-      textComparison?.commonStrong || 0
-    );
-
-  /*
-   * Fall 1:
-   * Nahezu identischer Bildaufbau.
-   *
-   * Dieser Grenzwert ist absichtlich sehr hoch.
-   */
- 
-
-
-  function blockSecondScan(
-    reason,
-    metrics
-  ) {
-    revokePreview(state.scan2);
-
-    state.scan2.code = null;
-    state.scan2.confirmed = false;
-    state.scan2.hash = null;
-    state.scan2.previewUrl = null;
-    state.scan2.fileDigest = null;
-    state.scan2.visualSignature = null;
-    state.scan2.identitySignature = null;
-
-    elements.preview2.src = "";
-
-    elements.preview2.classList.remove(
-      "visible"
-    );
-
-    elements.placeholder2.classList.remove(
-      "hidden"
-    );
-
-    elements.code2.value = "";
-    elements.code2.disabled = false;
-    elements.confirm2.disabled = true;
-
-    elements.ocrInfo2.textContent =
-      "Der zweite Scan wurde vollständig verworfen. " +
-      "Bitte fotografiere das andere Etikett.";
-
-    setStatus(
-      "Doppelter Scan verhindert: " +
-      reason,
-      "error"
-    );
-
-    appendDebug(
-      "\nDOPPEL-SCAN BLOCKIERT\n" +
-      `Grund: ${reason}\n` +
-      `Identische Datei: ${
-        metrics?.exactFile
-          ? "ja"
-          : "nein"
-      }\n` +
-      `Bildähnlichkeit: ${
-        metrics?.visual == null
-          ? "nicht verfügbar"
-          : formatPercent(
-              metrics.visual
-            )
-      }\n` +
-      `Textähnlichkeit: ${
-        metrics?.text == null
-          ? "nicht verfügbar"
-          : formatPercent(
-              metrics.text
-            )
-      }\n`
-    );
-
-    navigator.vibrate?.([
-      200,
-      80,
-      200
-    ]);
-  }
-
-
-  function percentileValue(
+  function percentile(
     values,
-    percentile
+    percentileValue
   ) {
-    if (!values.length) {
+    if (
+      !Array.isArray(values) ||
+      !values.length
+    ) {
       return 0;
     }
 
@@ -1966,37 +1224,56 @@ isValidCode =
             first - second
         );
 
-    const index =
-      Math.max(
-        0,
-        Math.min(
-          sorted.length - 1,
-          Math.round(
-            percentile /
-            100 *
-            (sorted.length - 1)
-          )
-        )
+    const position =
+      percentileValue /
+      100 *
+      (
+        sorted.length -
+        1
       );
 
-    return sorted[index];
-  }
+    const lower =
+      Math.floor(position);
 
+    const upper =
+      Math.ceil(position);
 
-  function formatPercent(value) {
-    if (
-      value == null ||
-      !Number.isFinite(value)
-    ) {
-      return "—";
+    if (lower === upper) {
+      return sorted[lower];
     }
 
-    return `${
-      Math.round(value * 100)
-    } %`;
+    const fraction =
+      position -
+      lower;
+
+    return (
+      sorted[lower] *
+        (
+          1 -
+          fraction
+        ) +
+
+      sorted[upper] *
+        fraction
+    );
   }
 
-  appendDebug(
-    `\nDoppel-Scan-Schutz ${FIX_VERSION} geladen.\n`
+
+  console.info(
+    `Doppel-Scan-Schutz ${VERSION} geladen.`
   );
+
+
+  return {
+    version:
+      VERSION,
+
+    prepareScan,
+
+    precheck,
+
+    createTextSignature,
+
+    finalCheck
+  };
 })();
