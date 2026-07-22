@@ -1,52 +1,49 @@
 "use strict";
 
 window.DuplicateFix = (() => {
-  const VERSION = "11.0";
+  const VERSION = "12.0";
 
-  /*
-   * Die Grenzwerte sind bewusst zurückhaltend.
-   *
-   * Zwei unterschiedliche Etiketten mit demselben
-   * Aufbau sollen nicht vorschnell blockiert werden.
-   */
   const LIMITS = Object.freeze({
     /*
-     * Allein anhand des Bildes nur bei nahezu
-     * vollständiger Übereinstimmung blockieren.
+     * Reiner Bildvergleich:
+     * Nur bei nahezu identischen Fotos blockieren.
      */
-    visualOnly:
-      0.995,
+    nearExactLabelVisual: 0.985,
+    nearExactFullVisual: 0.975,
 
     /*
-     * Mehrere eindeutige gemeinsame Kennungen.
+     * Gleiche eindeutige Kennungen.
      */
-    commonStrongRequired:
-      4,
-
-    identifiersText:
-      0.80,
-
-    identifiersVisual:
-      0.74,
+    manyIdentifiersCount: 4,
+    manyIdentifiersText: 0.64,
+    manyIdentifiersOverlap: 0.67,
+    manyIdentifiersLayout: 0.58,
+    manyIdentifiersVisual: 0.54,
 
     /*
-     * Extrem hohe Gesamttextähnlichkeit.
+     * Drei gemeinsame Kennungen benötigen
+     * stärkere Text-, Layout- und Bildwerte.
      */
-    veryStrongText:
-      0.94,
-
-    veryStrongTextVisual:
-      0.82,
+    threeIdentifiersText: 0.77,
+    threeIdentifiersOverlap: 0.74,
+    threeIdentifiersLayout: 0.68,
+    threeIdentifiersVisual: 0.60,
 
     /*
-     * Noch strengere Kombination bei nur
-     * drei gemeinsamen eindeutigen Kennungen.
+     * Gleiches Foto beziehungsweise gleiche Szene
+     * mit mindestens zwei eindeutigen Kennungen.
      */
-    threeIdentifiersText:
-      0.90,
+    sameSceneFullVisual: 0.91,
+    sameSceneLabelVisual: 0.88,
+    sameSceneText: 0.52,
+    sameSceneIdentifiers: 2,
 
-    threeIdentifiersVisual:
-      0.80
+    /*
+     * Fast vollständig identischer OCR-Text.
+     */
+    extremeText: 0.93,
+    extremeLayout: 0.80,
+    extremeLabelVisual: 0.70
   });
 
 
@@ -82,7 +79,16 @@ window.DuplicateFix = (() => {
     "ADDRESS",
     "ADRESSE",
     "KILOGRAM",
-    "KILOGRAMM"
+    "KILOGRAMM",
+    "FROM",
+    "PROTECT",
+    "FROST",
+    "CUSTOMER",
+    "KUNDE",
+    "SUPPLIER",
+    "LIEFERANT",
+    "DESCRIPTION",
+    "BEZEICHNUNG"
   ]);
 
 
@@ -90,248 +96,301 @@ window.DuplicateFix = (() => {
     file,
     sourceCanvas
   ) {
-    const fileDigest =
-      await calculateFileDigest(
-        file
-      );
-
-    const visualSignature =
-      createVisualSignature(
-        sourceCanvas
-      );
-
     return {
-      version:
-        VERSION,
+      version: VERSION,
 
-      fileDigest,
+      fileDigest:
+        await calculateFileDigest(file),
 
-      visualSignature,
+      visualSignature:
+        createVisualSignature(
+          sourceCanvas
+        ),
 
-      textSignature: null
+      identitySignature: null
     };
   }
 
 
-  function precheck(
-    first,
-    second
-  ) {
+  function precheck(first, second) {
     if (
       first?.fileDigest &&
       second?.fileDigest &&
       first.fileDigest ===
         second.fileDigest
     ) {
-      return {
+      return createResult({
         duplicate: true,
-
         exactFile: true,
 
-        visualSimilarity:
-          1,
-
-        textSimilarity:
-          null,
-
-        commonStrong:
-          null,
+        labelVisualSimilarity: 1,
+        fullVisualSimilarity: 1,
 
         reason:
           "Es wurde exakt dieselbe Bilddatei wie bei Etikett 1 verwendet."
-      };
+      });
     }
 
-    const visualSimilarity =
+    const visual =
       compareVisualSignatures(
         first?.visualSignature,
         second?.visualSignature
       );
 
+    /*
+     * Vor der OCR nur extrem ähnliche Bilder blockieren.
+     */
     if (
-      visualSimilarity >=
-      LIMITS.visualOnly
+      visual.label >=
+        LIMITS.nearExactLabelVisual &&
+      visual.full >=
+        LIMITS.nearExactFullVisual
     ) {
-      return {
+      return createResult({
         duplicate: true,
-
         exactFile: false,
 
-        visualSimilarity,
+        labelVisualSimilarity:
+          visual.label,
 
-        textSimilarity:
-          null,
-
-        commonStrong:
-          null,
+        fullVisualSimilarity:
+          visual.full,
 
         reason:
-          "Das zweite Foto stimmt visuell nahezu vollständig mit Etikett 1 überein."
-      };
+          "Das zweite Foto stimmt nahezu vollständig mit dem ersten Foto überein."
+      });
     }
 
-    return {
+    return createResult({
       duplicate: false,
-
       exactFile: false,
 
-      visualSimilarity,
+      labelVisualSimilarity:
+        visual.label,
 
-      textSimilarity:
-        null,
-
-      commonStrong:
-        null,
+      fullVisualSimilarity:
+        visual.full,
 
       reason:
         "Die Bildvorprüfung ergab keinen sicheren doppelten Scan."
+    });
+  }
+
+
+  function finalCheck(first, second) {
+    const visual =
+      compareVisualSignatures(
+        first?.visualSignature,
+        second?.visualSignature
+      );
+
+    const identity =
+      compareIdentitySignatures(
+        first?.identitySignature,
+        second?.identitySignature
+      );
+
+    const base = {
+      exactFile: false,
+
+      labelVisualSimilarity:
+        visual.label,
+
+      fullVisualSimilarity:
+        visual.full,
+
+      textSimilarity:
+        identity.textSimilarity,
+
+      strongOverlap:
+        identity.strongOverlap,
+
+      layoutSimilarity:
+        identity.layoutSimilarity,
+
+      commonStrong:
+        identity.commonStrong
+    };
+
+    /*
+     * Nahezu identische Bilder.
+     */
+    if (
+      visual.label >=
+        LIMITS.nearExactLabelVisual &&
+      visual.full >=
+        LIMITS.nearExactFullVisual
+    ) {
+      return createResult({
+        ...base,
+
+        duplicate: true,
+
+        reason:
+          "Das zweite Foto stimmt nahezu vollständig mit Etikett 1 überein."
+      });
+    }
+
+    /*
+     * Mindestens vier identische eindeutige Nummern
+     * an ähnlichen Positionen.
+     */
+    if (
+      identity.available &&
+      identity.commonStrong >=
+        LIMITS.manyIdentifiersCount &&
+      identity.textSimilarity >=
+        LIMITS.manyIdentifiersText &&
+      identity.strongOverlap >=
+        LIMITS.manyIdentifiersOverlap &&
+      identity.layoutSimilarity >=
+        LIMITS.manyIdentifiersLayout &&
+      visual.label >=
+        LIMITS.manyIdentifiersVisual
+    ) {
+      return createResult({
+        ...base,
+
+        duplicate: true,
+
+        reason:
+          "Mehrere eindeutige Nummern und ihre Positionen stimmen mit Etikett 1 überein."
+      });
+    }
+
+    /*
+     * Drei gemeinsame eindeutige Kennungen.
+     */
+    if (
+      identity.available &&
+      identity.commonStrong >= 3 &&
+      identity.textSimilarity >=
+        LIMITS.threeIdentifiersText &&
+      identity.strongOverlap >=
+        LIMITS.threeIdentifiersOverlap &&
+      identity.layoutSimilarity >=
+        LIMITS.threeIdentifiersLayout &&
+      visual.label >=
+        LIMITS.threeIdentifiersVisual
+    ) {
+      return createResult({
+        ...base,
+
+        duplicate: true,
+
+        reason:
+          "Drei eindeutige Kennungen, Etikettentext und Layout stimmen stark mit Etikett 1 überein."
+      });
+    }
+
+    /*
+     * Gleiche Szene beziehungsweise dasselbe Etikett
+     * mit mindestens zwei identischen Kennungen.
+     */
+    if (
+      identity.available &&
+      identity.commonStrong >=
+        LIMITS.sameSceneIdentifiers &&
+      identity.textSimilarity >=
+        LIMITS.sameSceneText &&
+      visual.full >=
+        LIMITS.sameSceneFullVisual &&
+      visual.label >=
+        LIMITS.sameSceneLabelVisual
+    ) {
+      return createResult({
+        ...base,
+
+        duplicate: true,
+
+        reason:
+          "Gesamtbild, Etikettenbereich und mehrere eindeutige Kennungen stimmen mit Etikett 1 überein."
+      });
+    }
+
+    /*
+     * Nahezu vollständige Text- und Layoutübereinstimmung.
+     */
+    if (
+      identity.available &&
+      identity.textSimilarity >=
+        LIMITS.extremeText &&
+      identity.layoutSimilarity >=
+        LIMITS.extremeLayout &&
+      visual.label >=
+        LIMITS.extremeLabelVisual
+    ) {
+      return createResult({
+        ...base,
+
+        duplicate: true,
+
+        reason:
+          "Etikettentext, Positionen und Bildstruktur entsprechen sehr wahrscheinlich erneut Etikett 1."
+      });
+    }
+
+    return createResult({
+      ...base,
+
+      duplicate: false,
+
+      reason:
+        "Etikett 2 unterscheidet sich ausreichend von Etikett 1."
+    });
+  }
+
+
+  function createResult(values) {
+    return {
+      duplicate:
+        Boolean(values.duplicate),
+
+      exactFile:
+        Boolean(values.exactFile),
+
+      labelVisualSimilarity:
+        finiteOrNull(
+          values.labelVisualSimilarity
+        ),
+
+      fullVisualSimilarity:
+        finiteOrNull(
+          values.fullVisualSimilarity
+        ),
+
+      textSimilarity:
+        finiteOrNull(
+          values.textSimilarity
+        ),
+
+      strongOverlap:
+        finiteOrNull(
+          values.strongOverlap
+        ),
+
+      layoutSimilarity:
+        finiteOrNull(
+          values.layoutSimilarity
+        ),
+
+      commonStrong:
+        Number.isFinite(
+          values.commonStrong
+        )
+          ? values.commonStrong
+          : null,
+
+      reason:
+        values.reason || ""
     };
   }
 
 
-  function finalCheck(
-    first,
-    second
-  ) {
-    const visualSimilarity =
-      compareVisualSignatures(
-        first?.visualSignature,
-        second?.visualSignature
-      );
-
-    const textComparison =
-      compareTextSignatures(
-        first?.textSignature,
-        second?.textSignature
-      );
-
-    const textSimilarity =
-      textComparison.similarity;
-
-    const commonStrong =
-      textComparison.commonStrong;
-
-    /*
-     * Nahezu identischer Bildaufbau.
-     */
-    if (
-      visualSimilarity >=
-      LIMITS.visualOnly
-    ) {
-      return {
-        duplicate: true,
-
-        exactFile: false,
-
-        visualSimilarity,
-
-        textSimilarity,
-
-        commonStrong,
-
-        reason:
-          "Das zweite Foto stimmt visuell nahezu vollständig mit Etikett 1 überein."
-      };
-    }
-
-    /*
-     * Mindestens vier gemeinsame eindeutige Kennungen,
-     * deutliche Textähnlichkeit und ähnlicher Bildaufbau.
-     */
-    if (
-      textComparison.available &&
-      commonStrong >=
-        LIMITS.commonStrongRequired &&
-      textSimilarity >=
-        LIMITS.identifiersText &&
-      visualSimilarity >=
-        LIMITS.identifiersVisual
-    ) {
-      return {
-        duplicate: true,
-
-        exactFile: false,
-
-        visualSimilarity,
-
-        textSimilarity,
-
-        commonStrong,
-
-        reason:
-          "Mehrere eindeutige Nummern und der Bildaufbau stimmen mit Etikett 1 überein."
-      };
-    }
-
-    /*
-     * Drei eindeutige Kennungen reichen nur,
-     * wenn Text und Bild zusätzlich sehr ähnlich sind.
-     */
-    if (
-      textComparison.available &&
-      commonStrong >= 3 &&
-      textSimilarity >=
-        LIMITS.threeIdentifiersText &&
-      visualSimilarity >=
-        LIMITS.threeIdentifiersVisual
-    ) {
-      return {
-        duplicate: true,
-
-        exactFile: false,
-
-        visualSimilarity,
-
-        textSimilarity,
-
-        commonStrong,
-
-        reason:
-          "Drei eindeutige Kennungen sowie Text und Bild stimmen sehr stark mit Etikett 1 überein."
-      };
-    }
-
-    /*
-     * Extrem hohe Ähnlichkeit des gesamten Begleittexts
-     * plus deutliche visuelle Übereinstimmung.
-     */
-    if (
-      textComparison.available &&
-      textSimilarity >=
-        LIMITS.veryStrongText &&
-      visualSimilarity >=
-        LIMITS.veryStrongTextVisual
-    ) {
-      return {
-        duplicate: true,
-
-        exactFile: false,
-
-        visualSimilarity,
-
-        textSimilarity,
-
-        commonStrong,
-
-        reason:
-          "Etikettentext und Bildstruktur entsprechen sehr wahrscheinlich erneut Etikett 1."
-      };
-    }
-
-    return {
-      duplicate: false,
-
-      exactFile: false,
-
-      visualSimilarity,
-
-      textSimilarity,
-
-      commonStrong,
-
-      reason:
-        "Etikett 2 unterscheidet sich ausreichend von Etikett 1."
-    };
+  function finiteOrNull(value) {
+    return Number.isFinite(value)
+      ? value
+      : null;
   }
 
 
@@ -360,9 +419,6 @@ window.DuplicateFix = (() => {
         .join("");
     }
 
-    /*
-     * Fallback für ältere Browser.
-     */
     return [
       file.name,
       file.size,
@@ -375,103 +431,47 @@ window.DuplicateFix = (() => {
   function createVisualSignature(
     sourceCanvas
   ) {
-    const width =
-      sourceCanvas.width;
+    const fullRegion = {
+      x: 0,
+      y: 0,
+      width: sourceCanvas.width,
+      height: sourceCanvas.height
+    };
 
-    const height =
-      sourceCanvas.height;
+    const labelRegion =
+      detectLabelRegion(
+        sourceCanvas
+      );
 
-    const regions = [
-      {
-        name:
-          "full",
+    return {
+      full:
+        createFingerprintVariants(
+          sourceCanvas,
+          fullRegion,
+          [-4, 0, 4]
+        ),
 
-        weight:
-          0.40,
+      label:
+        createFingerprintVariants(
+          sourceCanvas,
+          labelRegion,
+          [-7, -3, 0, 3, 7]
+        ),
 
-        x: 0,
-        y: 0,
-        width,
-        height
-      },
-
-      {
-        name:
-          "center",
-
-        weight:
-          0.30,
-
-        x:
-          width * 0.08,
-
-        y:
-          height * 0.08,
-
-        width:
-          width * 0.84,
-
-        height:
-          height * 0.84
-      },
-
-      {
-        name:
-          "top",
-
-        weight:
-          0.15,
-
-        x: 0,
-        y: 0,
-        width,
-
-        height:
-          height * 0.58
-      },
-
-      {
-        name:
-          "bottom",
-
-        weight:
-          0.15,
-
-        x: 0,
-
-        y:
-          height * 0.42,
-
-        width,
-
-        height:
-          height * 0.58
-      }
-    ];
-
-    return regions.map(
-      region => ({
-        name:
-          region.name,
-
-        weight:
-          region.weight,
-
-        fingerprint:
-          createRegionFingerprint(
-            sourceCanvas,
-            region
-          )
-      })
-    );
+      labelRegion
+    };
   }
 
 
-  function createRegionFingerprint(
-    sourceCanvas,
-    region
+  /*
+   * Sucht die größte helle, relativ farbneutrale Fläche.
+   * Bei typischen weißen Etiketten wird dadurch möglichst
+   * der Etikettenbereich statt des gesamten Fotos verglichen.
+   */
+  function detectLabelRegion(
+    sourceCanvas
   ) {
-    const size = 32;
+    const size = 112;
 
     const canvas =
       document.createElement(
@@ -489,20 +489,8 @@ window.DuplicateFix = (() => {
         }
       );
 
-    context.imageSmoothingEnabled =
-      true;
-
-    context.imageSmoothingQuality =
-      "high";
-
     context.drawImage(
       sourceCanvas,
-
-      region.x,
-      region.y,
-      region.width,
-      region.height,
-
       0,
       0,
       size,
@@ -517,6 +505,419 @@ window.DuplicateFix = (() => {
         size
       ).data;
 
+    const luminances = [];
+
+    for (
+      let index = 0;
+      index < data.length;
+      index += 4
+    ) {
+      luminances.push(
+        data[index] * 0.299 +
+        data[index + 1] * 0.587 +
+        data[index + 2] * 0.114
+      );
+    }
+
+    const threshold =
+      Math.max(
+        125,
+        percentile(
+          luminances,
+          58
+        )
+      );
+
+    const mask =
+      new Uint8Array(
+        size * size
+      );
+
+    for (
+      let pixel = 0;
+      pixel < mask.length;
+      pixel += 1
+    ) {
+      const dataIndex =
+        pixel * 4;
+
+      const red =
+        data[dataIndex];
+
+      const green =
+        data[dataIndex + 1];
+
+      const blue =
+        data[dataIndex + 2];
+
+      const luminance =
+        red * 0.299 +
+        green * 0.587 +
+        blue * 0.114;
+
+      const saturation =
+        Math.max(
+          red,
+          green,
+          blue
+        ) -
+        Math.min(
+          red,
+          green,
+          blue
+        );
+
+      mask[pixel] =
+        luminance >= threshold &&
+        saturation <= 115
+          ? 1
+          : 0;
+    }
+
+    const visited =
+      new Uint8Array(
+        mask.length
+      );
+
+    let best = null;
+
+    for (
+      let start = 0;
+      start < mask.length;
+      start += 1
+    ) {
+      if (
+        !mask[start] ||
+        visited[start]
+      ) {
+        continue;
+      }
+
+      const stack = [start];
+
+      visited[start] = 1;
+
+      let area = 0;
+
+      let minX = size;
+      let minY = size;
+      let maxX = 0;
+      let maxY = 0;
+
+      while (stack.length) {
+        const current =
+          stack.pop();
+
+        const x =
+          current % size;
+
+        const y =
+          Math.floor(
+            current / size
+          );
+
+        area += 1;
+
+        minX =
+          Math.min(minX, x);
+
+        minY =
+          Math.min(minY, y);
+
+        maxX =
+          Math.max(maxX, x);
+
+        maxY =
+          Math.max(maxY, y);
+
+        const neighbours = [
+          current - 1,
+          current + 1,
+          current - size,
+          current + size
+        ];
+
+        for (const neighbour of neighbours) {
+          if (
+            neighbour < 0 ||
+            neighbour >= mask.length ||
+            visited[neighbour] ||
+            !mask[neighbour]
+          ) {
+            continue;
+          }
+
+          const neighbourX =
+            neighbour % size;
+
+          if (
+            Math.abs(
+              neighbourX - x
+            ) > 1
+          ) {
+            continue;
+          }
+
+          visited[neighbour] = 1;
+          stack.push(neighbour);
+        }
+      }
+
+      const width =
+        maxX - minX + 1;
+
+      const height =
+        maxY - minY + 1;
+
+      const boundingArea =
+        width * height;
+
+      const areaRatio =
+        area /
+        mask.length;
+
+      const rectangularity =
+        area /
+        Math.max(
+          1,
+          boundingArea
+        );
+
+      if (
+        areaRatio < 0.018 ||
+        width < 14 ||
+        height < 14
+      ) {
+        continue;
+      }
+
+      const centerX =
+        (minX + maxX) / 2;
+
+      const centerY =
+        (minY + maxY) / 2;
+
+      const distance =
+        Math.hypot(
+          centerX - size / 2,
+          centerY - size / 2
+        ) /
+        (size * 0.71);
+
+      const centerFactor =
+        1.18 -
+        Math.min(
+          1,
+          distance
+        ) * 0.25;
+
+      const score =
+        area *
+        rectangularity *
+        centerFactor;
+
+      if (
+        !best ||
+        score > best.score
+      ) {
+        best = {
+          minX,
+          minY,
+          maxX,
+          maxY,
+          areaRatio,
+          score
+        };
+      }
+    }
+
+    if (
+      !best ||
+      best.areaRatio > 0.94
+    ) {
+      return {
+        x: 0,
+        y: 0,
+        width: sourceCanvas.width,
+        height: sourceCanvas.height
+      };
+    }
+
+    const padding = 5;
+
+    const minX =
+      Math.max(
+        0,
+        best.minX - padding
+      );
+
+    const minY =
+      Math.max(
+        0,
+        best.minY - padding
+      );
+
+    const maxX =
+      Math.min(
+        size - 1,
+        best.maxX + padding
+      );
+
+    const maxY =
+      Math.min(
+        size - 1,
+        best.maxY + padding
+      );
+
+    return {
+      x:
+        minX /
+        size *
+        sourceCanvas.width,
+
+      y:
+        minY /
+        size *
+        sourceCanvas.height,
+
+      width:
+        (
+          maxX -
+          minX +
+          1
+        ) /
+        size *
+        sourceCanvas.width,
+
+      height:
+        (
+          maxY -
+          minY +
+          1
+        ) /
+        size *
+        sourceCanvas.height
+    };
+  }
+
+
+  function createFingerprintVariants(
+    sourceCanvas,
+    region,
+    angles
+  ) {
+    return angles.map(
+      angle =>
+        createFingerprint(
+          sourceCanvas,
+          region,
+          angle
+        )
+    );
+  }
+
+
+  function createFingerprint(
+    sourceCanvas,
+    region,
+    angle
+  ) {
+    const normalizedSize = 224;
+
+    const normalized =
+      document.createElement(
+        "canvas"
+      );
+
+    normalized.width =
+      normalizedSize;
+
+    normalized.height =
+      normalizedSize;
+
+    const context =
+      normalized.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
+
+    context.fillStyle = "white";
+
+    context.fillRect(
+      0,
+      0,
+      normalizedSize,
+      normalizedSize
+    );
+
+    context.save();
+
+    context.translate(
+      normalizedSize / 2,
+      normalizedSize / 2
+    );
+
+    context.rotate(
+      angle *
+      Math.PI /
+      180
+    );
+
+    context.drawImage(
+      sourceCanvas,
+
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+
+      -normalizedSize / 2,
+      -normalizedSize / 2,
+      normalizedSize,
+      normalizedSize
+    );
+
+    context.restore();
+
+    const sampleSize = 36;
+
+    const sample =
+      document.createElement(
+        "canvas"
+      );
+
+    sample.width =
+      sampleSize;
+
+    sample.height =
+      sampleSize;
+
+    const sampleContext =
+      sample.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
+
+    sampleContext.drawImage(
+      normalized,
+      0,
+      0,
+      sampleSize,
+      sampleSize
+    );
+
+    const data =
+      sampleContext.getImageData(
+        0,
+        0,
+        sampleSize,
+        sampleSize
+      ).data;
+
     const grayscale = [];
 
     for (
@@ -525,65 +926,57 @@ window.DuplicateFix = (() => {
       index += 4
     ) {
       grayscale.push(
-        data[index] *
-          0.299 +
-        data[index + 1] *
-          0.587 +
-        data[index + 2] *
-          0.114
+        data[index] * 0.299 +
+        data[index + 1] * 0.587 +
+        data[index + 2] * 0.114
       );
     }
 
     const low =
       percentile(
         grayscale,
-        5
+        4
       );
 
     const high =
       Math.max(
-        low + 20,
-
+        low + 25,
         percentile(
           grayscale,
-          95
+          96
         )
       );
 
-    const normalized =
-      grayscale.map(
-        value =>
-          Math.max(
-            0,
-
-            Math.min(
-              1,
-
-              (
-                value -
-                low
-              ) /
-              (
-                high -
-                low
-              )
+    const normalizedGray =
+      grayscale.map(value =>
+        Math.max(
+          0,
+          Math.min(
+            1,
+            (
+              value -
+              low
+            ) /
+            (
+              high -
+              low
             )
           )
+        )
       );
 
     const median =
       percentile(
-        normalized,
+        normalizedGray,
         50
       );
 
     const averageHash =
-      normalized
-        .map(
-          value =>
-            value >= median
-              ? "1"
-              : "0"
+      normalizedGray
+        .map(value =>
+          value >= median
+            ? "1"
+            : "0"
         )
         .join("");
 
@@ -591,22 +984,27 @@ window.DuplicateFix = (() => {
 
     for (
       let y = 0;
-      y < size;
+      y < sampleSize;
       y += 1
     ) {
       for (
         let x = 0;
-        x < size - 1;
+        x < sampleSize - 1;
         x += 1
       ) {
         const left =
-          normalized[
-            y * size + x
+          normalizedGray[
+            y *
+            sampleSize +
+            x
           ];
 
         const right =
-          normalized[
-            y * size + x + 1
+          normalizedGray[
+            y *
+            sampleSize +
+            x +
+            1
           ];
 
         differenceHash +=
@@ -618,36 +1016,37 @@ window.DuplicateFix = (() => {
 
     const edges =
       new Array(
-        size * size
+        sampleSize *
+        sampleSize
       ).fill(0);
 
     for (
       let y = 1;
-      y < size - 1;
+      y < sampleSize - 1;
       y += 1
     ) {
       for (
         let x = 1;
-        x < size - 1;
+        x < sampleSize - 1;
         x += 1
       ) {
         const index =
-          y * size + x;
+          y *
+          sampleSize +
+          x;
 
         const horizontal =
-          normalized[
-            index + 1
-          ] -
-          normalized[
-            index - 1
-          ];
+          normalizedGray[index + 1] -
+          normalizedGray[index - 1];
 
         const vertical =
-          normalized[
-            index + size
+          normalizedGray[
+            index +
+            sampleSize
           ] -
-          normalized[
-            index - size
+          normalizedGray[
+            index -
+            sampleSize
           ];
 
         edges[index] =
@@ -661,16 +1060,15 @@ window.DuplicateFix = (() => {
     const edgeThreshold =
       percentile(
         edges,
-        68
+        70
       );
 
     const edgeHash =
       edges
-        .map(
-          value =>
-            value >= edgeThreshold
-              ? "1"
-              : "0"
+        .map(value =>
+          value >= edgeThreshold
+            ? "1"
+            : "0"
         )
         .join("");
 
@@ -679,7 +1077,7 @@ window.DuplicateFix = (() => {
 
     for (
       const value
-      of normalized
+      of normalizedGray
     ) {
       const bin =
         Math.min(
@@ -693,13 +1091,14 @@ window.DuplicateFix = (() => {
     }
 
     const total =
-      normalized.length;
+      normalizedGray.length;
 
     return {
-      size,
+      size:
+        sampleSize,
 
       grayscale:
-        normalized,
+        normalizedGray,
 
       averageHash,
 
@@ -708,10 +1107,8 @@ window.DuplicateFix = (() => {
       edgeHash,
 
       histogram:
-        histogram.map(
-          value =>
-            value /
-            total
+        histogram.map(value =>
+          value / total
         )
     };
   }
@@ -721,63 +1118,66 @@ window.DuplicateFix = (() => {
     first,
     second
   ) {
+    if (!first || !second) {
+      return {
+        label: 0,
+        full: 0
+      };
+    }
+
+    return {
+      label:
+        compareFingerprintVariants(
+          first.label,
+          second.label
+        ),
+
+      full:
+        compareFingerprintVariants(
+          first.full,
+          second.full
+        )
+    };
+  }
+
+
+  function compareFingerprintVariants(
+    firstVariants,
+    secondVariants
+  ) {
     if (
-      !Array.isArray(first) ||
-      !Array.isArray(second) ||
-      first.length !== second.length
+      !Array.isArray(firstVariants) ||
+      !Array.isArray(secondVariants)
     ) {
       return 0;
     }
 
-    let weightedScore = 0;
-    let totalWeight = 0;
+    let best = 0;
 
     for (
-      let index = 0;
-      index < first.length;
-      index += 1
+      const first
+      of firstVariants
     ) {
-      const firstRegion =
-        first[index];
-
-      const secondRegion =
-        second[index];
-
-      if (
-        firstRegion.name !==
-        secondRegion.name
+      for (
+        const second
+        of secondVariants
       ) {
-        continue;
+        best =
+          Math.max(
+            best,
+            compareFingerprints(
+              first,
+              second
+            )
+          );
       }
-
-      const weight =
-        Number(
-          firstRegion.weight || 0
-        );
-
-      const similarity =
-        compareRegionFingerprints(
-          firstRegion.fingerprint,
-          secondRegion.fingerprint
-        );
-
-      weightedScore +=
-        similarity *
-        weight;
-
-      totalWeight +=
-        weight;
     }
 
-    return weightedScore /
-      Math.max(
-        0.0001,
-        totalWeight
-      );
+    return best;
   }
 
 
-  function compareRegionFingerprints(
+  function compareFingerprints(
     first,
     second
   ) {
@@ -786,7 +1186,7 @@ window.DuplicateFix = (() => {
     }
 
     const grayscaleSimilarity =
-      bestShiftedGrayscaleSimilarity(
+      bestShiftedSimilarity(
         first.grayscale,
         second.grayscale,
         first.size,
@@ -818,25 +1218,16 @@ window.DuplicateFix = (() => {
       );
 
     return (
-      grayscaleSimilarity *
-        0.42 +
-
-      averageHashSimilarity *
-        0.13 +
-
-      differenceHashSimilarity *
-        0.14 +
-
-      edgeHashSimilarity *
-        0.21 +
-
-      histogramSimilarity *
-        0.10
+      grayscaleSimilarity * 0.38 +
+      averageHashSimilarity * 0.13 +
+      differenceHashSimilarity * 0.15 +
+      edgeHashSimilarity * 0.24 +
+      histogramSimilarity * 0.10
     );
   }
 
 
-  function bestShiftedGrayscaleSimilarity(
+  function bestShiftedSimilarity(
     first,
     second,
     size,
@@ -896,22 +1287,18 @@ window.DuplicateFix = (() => {
               continue;
             }
 
-            const firstValue =
-              first[
-                y * size + x
-              ];
-
-            const secondValue =
-              second[
-                secondY *
-                size +
-                secondX
-              ];
-
             difference +=
               Math.abs(
-                firstValue -
-                secondValue
+                first[
+                  y *
+                  size +
+                  x
+                ] -
+                second[
+                  secondY *
+                  size +
+                  secondX
+                ]
               );
 
             count += 1;
@@ -925,7 +1312,6 @@ window.DuplicateFix = (() => {
         const similarity =
           Math.max(
             0,
-
             1 -
             difference /
             count
@@ -950,7 +1336,8 @@ window.DuplicateFix = (() => {
     if (
       !first ||
       !second ||
-      first.length !== second.length
+      first.length !==
+        second.length
     ) {
       return 0;
     }
@@ -982,7 +1369,8 @@ window.DuplicateFix = (() => {
     if (
       !Array.isArray(first) ||
       !Array.isArray(second) ||
-      first.length !== second.length
+      first.length !==
+        second.length
     ) {
       return 0;
     }
@@ -1003,7 +1391,6 @@ window.DuplicateFix = (() => {
 
     return Math.max(
       0,
-
       Math.min(
         1,
         intersection
@@ -1012,90 +1399,175 @@ window.DuplicateFix = (() => {
   }
 
 
-  function createTextSignature(text) {
+  function createIdentitySignature(
+    identityData
+  ) {
+    const width =
+      Math.max(
+        1,
+        Number(
+          identityData?.width || 1
+        )
+      );
+
+    const height =
+      Math.max(
+        1,
+        Number(
+          identityData?.height || 1
+        )
+      );
+
+    const sourceWords =
+      Array.isArray(
+        identityData?.words
+      )
+        ? identityData.words
+        : [];
+
+    const words = [];
+
+    for (const sourceWord of sourceWords) {
+      const token =
+        normalizeIdentityToken(
+          sourceWord.text
+        );
+
+      if (
+        !token ||
+        /^D[0-9]+$/.test(token) ||
+        sourceWord.confidence < 28
+      ) {
+        continue;
+      }
+
+      const centerX =
+        (
+          sourceWord.left +
+          sourceWord.width / 2
+        ) /
+        width;
+
+      const centerY =
+        (
+          sourceWord.top +
+          sourceWord.height / 2
+        ) /
+        height;
+
+      words.push({
+        token,
+        confidence:
+          sourceWord.confidence,
+
+        x:
+          clamp01(centerX),
+
+        y:
+          clamp01(centerY)
+      });
+    }
+
     /*
-     * Die OCR-Wörter bleiben voneinander getrennt.
-     * Es werden keine Nummern verbunden.
+     * Falls TSV wenige Wörter liefert,
+     * werden die normalen Textblöcke zusätzlich aufgenommen.
      */
-    const rawTokens =
-      String(text || "")
+    const fallbackTokens =
+      String(
+        identityData?.text || ""
+      )
         .toUpperCase()
-        .replace(/\r/g, "")
         .split(/\s+/)
         .map(
-          token =>
-            token.replace(
-              /^[^A-Z0-9]+|[^A-Z0-9]+$/g,
-              ""
-            )
+          normalizeIdentityToken
         )
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(token =>
+          !/^D[0-9]+$/.test(token)
+        );
+
+    const tokenSet =
+      new Set(
+        words.map(
+          word =>
+            word.token
+        )
+      );
+
+    for (const token of fallbackTokens) {
+      tokenSet.add(token);
+    }
 
     const tokens =
-      [
-        ...new Set(
-          rawTokens
-            /*
-             * Die D-Nummer wird aus dem Identitätsvergleich
-             * entfernt, da zwei passende Etiketten dieselbe
-             * D-Nummer besitzen sollen.
-             */
-            .filter(
-              token =>
-                !/^D[0-9]+$/.test(
-                  token
-                )
-            )
-
-            .filter(
-              token =>
-                token.length >= 3 ||
-                /^[0-9]{4,}$/.test(
-                  token
-                )
-            )
-        )
-      ];
+      [...tokenSet]
+        .filter(token =>
+          token.length >= 3 ||
+          /^[0-9]{4,}$/.test(token)
+        );
 
     const strongTokens =
       tokens.filter(
-        token => {
-          if (
-            GENERIC_WORDS.has(
-              token
-            )
-          ) {
-            return false;
-          }
-
-          /*
-           * Eindeutige Kennungen:
-           *
-           * - reine Zahlen mit mindestens fünf Stellen
-           * - gemischte Buchstaben-/Zahlencodes
-           */
-          return (
-            /^[0-9]{5,}$/.test(
-              token
-            ) ||
-
-            (
-              token.length >= 5 &&
-              /[A-Z]/.test(token) &&
-              /[0-9]/.test(token)
-            )
-          );
-        }
+        isStrongIdentityToken
       );
+
+    const positions = {};
+
+    for (const word of words) {
+      if (!positions[word.token]) {
+        positions[word.token] = [];
+      }
+
+      positions[word.token].push({
+        x: word.x,
+        y: word.y
+      });
+    }
 
     return {
       tokens,
-      strongTokens
+      strongTokens,
+      positions
     };
   }
 
 
-  function compareTextSignatures(
+  function normalizeIdentityToken(value) {
+    return String(value || "")
+      .toUpperCase()
+      .trim()
+      .replace(
+        /^[^A-Z0-9]+|[^A-Z0-9]+$/g,
+        ""
+      );
+  }
+
+
+  function isStrongIdentityToken(token) {
+    if (
+      !token ||
+      GENERIC_WORDS.has(token)
+    ) {
+      return false;
+    }
+
+    /*
+     * Eindeutige Kennungen:
+     *
+     * - reine Nummern mit mindestens vier Stellen
+     * - gemischte Codes aus Buchstaben und Zahlen
+     */
+    return (
+      /^[0-9]{4,}$/.test(token) ||
+      (
+        token.length >= 5 &&
+        /[A-Z]/.test(token) &&
+        /[0-9]/.test(token)
+      )
+    );
+  }
+
+
+  function compareIdentitySignatures(
     first,
     second
   ) {
@@ -1109,14 +1581,26 @@ window.DuplicateFix = (() => {
         second?.tokens || []
       );
 
+    const firstStrong =
+      new Set(
+        first?.strongTokens || []
+      );
+
+    const secondStrong =
+      new Set(
+        second?.strongTokens || []
+      );
+
     if (
       firstTokens.size < 3 ||
       secondTokens.size < 3
     ) {
       return {
         available: false,
-        similarity: 0,
-        commonStrong: 0
+        textSimilarity: 0,
+        commonStrong: 0,
+        strongOverlap: 0,
+        layoutSimilarity: 0
       };
     }
 
@@ -1127,51 +1611,137 @@ window.DuplicateFix = (() => {
       ]);
 
     let unionWeight = 0;
-    let intersectionWeight = 0;
+    let commonWeight = 0;
 
     for (const token of union) {
       const weight =
         tokenWeight(token);
 
-      unionWeight +=
-        weight;
+      unionWeight += weight;
 
       if (
         firstTokens.has(token) &&
         secondTokens.has(token)
       ) {
-        intersectionWeight +=
-          weight;
+        commonWeight += weight;
       }
     }
 
-    const secondStrong =
-      new Set(
-        second?.strongTokens || []
-      );
+    const commonStrongTokens =
+      [...firstStrong]
+        .filter(token =>
+          secondStrong.has(token)
+        );
 
     const commonStrong =
-      (
-        first?.strongTokens || []
-      )
-        .filter(
-          token =>
-            secondStrong.has(token)
+      commonStrongTokens.length;
+
+    const strongOverlap =
+      commonStrong /
+      Math.max(
+        1,
+        Math.min(
+          firstStrong.size,
+          secondStrong.size
         )
-        .length;
+      );
+
+    const layoutSimilarity =
+      compareTokenLayouts(
+        commonStrongTokens,
+        first?.positions || {},
+        second?.positions || {}
+      );
 
     return {
       available: true,
 
-      similarity:
-        intersectionWeight /
+      textSimilarity:
+        commonWeight /
         Math.max(
           1,
           unionWeight
         ),
 
-      commonStrong
+      commonStrong,
+
+      strongOverlap,
+
+      layoutSimilarity
     };
+  }
+
+
+  function compareTokenLayouts(
+    tokens,
+    firstPositions,
+    secondPositions
+  ) {
+    const scores = [];
+
+    for (const token of tokens) {
+      const first =
+        firstPositions[token] || [];
+
+      const second =
+        secondPositions[token] || [];
+
+      if (
+        !first.length ||
+        !second.length
+      ) {
+        continue;
+      }
+
+      let bestDistance =
+        Infinity;
+
+      for (
+        const firstPosition
+        of first
+      ) {
+        for (
+          const secondPosition
+          of second
+        ) {
+          const distance =
+            Math.hypot(
+              firstPosition.x -
+              secondPosition.x,
+
+              firstPosition.y -
+              secondPosition.y
+            );
+
+          bestDistance =
+            Math.min(
+              bestDistance,
+              distance
+            );
+        }
+      }
+
+      const score =
+        Math.max(
+          0,
+          1 -
+          bestDistance /
+          0.38
+        );
+
+      scores.push(score);
+    }
+
+    if (!scores.length) {
+      return 0;
+    }
+
+    return scores.reduce(
+      (sum, score) =>
+        sum + score,
+      0
+    ) /
+    scores.length;
   }
 
 
@@ -1179,11 +1749,11 @@ window.DuplicateFix = (() => {
     if (
       GENERIC_WORDS.has(token)
     ) {
-      return 0.2;
+      return 0.15;
     }
 
     if (
-      /^[0-9]{5,}$/.test(token)
+      /^[0-9]{4,}$/.test(token)
     ) {
       return 4;
     }
@@ -1196,10 +1766,8 @@ window.DuplicateFix = (() => {
       return 3;
     }
 
-    if (
-      token.length >= 7
-    ) {
-      return 1.5;
+    if (token.length >= 7) {
+      return 1.4;
     }
 
     return 1;
@@ -1208,7 +1776,7 @@ window.DuplicateFix = (() => {
 
   function percentile(
     values,
-    percentileValue
+    requestedPercentile
   ) {
     if (
       !Array.isArray(values) ||
@@ -1218,19 +1786,15 @@ window.DuplicateFix = (() => {
     }
 
     const sorted =
-      [...values]
-        .sort(
-          (first, second) =>
-            first - second
-        );
+      [...values].sort(
+        (first, second) =>
+          first - second
+      );
 
     const position =
-      percentileValue /
+      requestedPercentile /
       100 *
-      (
-        sorted.length -
-        1
-      );
+      (sorted.length - 1);
 
     const lower =
       Math.floor(position);
@@ -1243,18 +1807,24 @@ window.DuplicateFix = (() => {
     }
 
     const fraction =
-      position -
-      lower;
+      position - lower;
 
     return (
       sorted[lower] *
-        (
-          1 -
-          fraction
-        ) +
-
+        (1 - fraction) +
       sorted[upper] *
         fraction
+    );
+  }
+
+
+  function clamp01(value) {
+    return Math.max(
+      0,
+      Math.min(
+        1,
+        Number(value || 0)
+      )
     );
   }
 
@@ -1265,15 +1835,12 @@ window.DuplicateFix = (() => {
 
 
   return {
-    version:
-      VERSION,
+    version: VERSION,
 
     prepareScan,
-
     precheck,
 
-    createTextSignature,
-
+    createIdentitySignature,
     finalCheck
   };
 })();
