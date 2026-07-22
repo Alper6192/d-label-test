@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -34,9 +35,16 @@
     body {
       margin: 0;
       min-height: 100vh;
+
       background:
-        radial-gradient(circle at top, #183052, var(--background) 550px);
+        radial-gradient(
+          circle at top,
+          #183052,
+          var(--background) 550px
+        );
+
       color: var(--text);
+
       font-family:
         Inter,
         system-ui,
@@ -54,6 +62,7 @@
     .app {
       width: min(900px, 100%);
       margin: 0 auto;
+
       padding:
         max(16px, env(safe-area-inset-top))
         14px
@@ -64,7 +73,7 @@
       margin-bottom: 18px;
     }
 
-    .header p {
+    .header .eyebrow {
       margin: 0 0 4px;
       color: #72bfe8;
       font-size: 0.78rem;
@@ -142,7 +151,14 @@
       margin-bottom: 16px;
       border: 1px solid var(--border);
       border-radius: 22px;
-      background: linear-gradient(145deg, var(--panel), #0c1626);
+
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          #0c1626
+        );
+
       overflow: hidden;
     }
 
@@ -173,7 +189,7 @@
     .preview img {
       display: none;
       width: 100%;
-      max-height: 480px;
+      max-height: 520px;
       object-fit: contain;
     }
 
@@ -190,7 +206,7 @@
     .fields {
       display: grid;
       gap: 12px;
-      padding: 16px 18px 18px;
+      padding: 16px 18px 12px;
     }
 
     .field label {
@@ -245,7 +261,13 @@
     button.primary,
     .camera-button.primary {
       border-color: #168ac9;
-      background: linear-gradient(135deg, #087ab8, #15528f);
+
+      background:
+        linear-gradient(
+          135deg,
+          #087ab8,
+          #15528f
+        );
     }
 
     button.confirm {
@@ -344,7 +366,7 @@
     }
 
     pre {
-      max-height: 300px;
+      max-height: 360px;
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-word;
@@ -370,7 +392,8 @@
 <body>
   <main class="app">
     <header class="header">
-      <p>Lokale Browser-OCR</p>
+      <p class="eyebrow">Lokale Browser-OCR</p>
+
       <h1>D-Nummern vergleichen</h1>
 
       <div class="privacy">
@@ -380,57 +403,83 @@
     </header>
 
     <section class="progress">
-      <div id="progress1" class="progress-item active">
+      <div
+        id="progress1"
+        class="progress-item active"
+      >
         1. Etikett 1
       </div>
 
-      <div id="progress2" class="progress-item">
+      <div
+        id="progress2"
+        class="progress-item"
+      >
         2. Etikett 2
       </div>
 
-      <div id="progress3" class="progress-item">
+      <div
+        id="progress3"
+        class="progress-item"
+      >
         3. Vergleich
       </div>
     </section>
 
-    <section id="status" class="status">
+    <section
+      id="status"
+      class="status"
+    >
       Fotografiere zuerst das erste Etikett.
     </section>
 
-    <!-- ETIKETT 1 -->
-    <section id="card1" class="scanner-card">
+    <section
+      id="card1"
+      class="scanner-card"
+    >
       <div class="scanner-header">
         <h2>Etikett 1</h2>
 
         <p>
-          Fotografiere nur das erste Etikett und gehe so nah heran,
+          Fotografiere das erste Etikett so,
           dass die D-Nummer deutlich lesbar ist.
         </p>
       </div>
 
       <div class="preview">
-        <div id="placeholder1" class="preview-placeholder">
+        <div
+          id="placeholder1"
+          class="preview-placeholder"
+        >
           Noch kein Foto aufgenommen
         </div>
 
-        <img id="preview1" alt="Etikett 1">
+        <img
+          id="preview1"
+          alt="Etikett 1"
+        >
       </div>
 
       <div class="fields">
         <div class="field">
-          <label for="code1">Erkannte D-Nummer</label>
+          <label for="code1">
+            Erkannte D-Nummer
+          </label>
 
           <input
             id="code1"
             inputmode="text"
             autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
             placeholder="D562708020"
-            maxlength="20"
           >
         </div>
       </div>
 
-      <p id="ocrInfo1" class="ocr-info"></p>
+      <p
+        id="ocrInfo1"
+        class="ocr-info"
+      ></p>
 
       <div class="actions">
         <label class="camera-button primary">
@@ -444,14 +493,20 @@
           >
         </label>
 
-        <button id="confirm1" class="confirm" disabled>
+        <button
+          id="confirm1"
+          class="confirm"
+          disabled
+        >
           Etikett 1 übernehmen
         </button>
       </div>
     </section>
 
-    <!-- ETIKETT 2 -->
-    <section id="card2" class="scanner-card hidden">
+    <section
+      id="card2"
+      class="scanner-card hidden"
+    >
       <div class="scanner-header">
         <h2>Etikett 2</h2>
 
@@ -462,28 +517,40 @@
       </div>
 
       <div class="preview">
-        <div id="placeholder2" class="preview-placeholder">
+        <div
+          id="placeholder2"
+          class="preview-placeholder"
+        >
           Noch kein Foto aufgenommen
         </div>
 
-        <img id="preview2" alt="Etikett 2">
+        <img
+          id="preview2"
+          alt="Etikett 2"
+        >
       </div>
 
       <div class="fields">
         <div class="field">
-          <label for="code2">Erkannte D-Nummer</label>
+          <label for="code2">
+            Erkannte D-Nummer
+          </label>
 
           <input
             id="code2"
             inputmode="text"
             autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
             placeholder="D562708020"
-            maxlength="20"
           >
         </div>
       </div>
 
-      <p id="ocrInfo2" class="ocr-info"></p>
+      <p
+        id="ocrInfo2"
+        class="ocr-info"
+      ></p>
 
       <div class="actions">
         <label class="camera-button primary">
@@ -497,14 +564,20 @@
           >
         </label>
 
-        <button id="confirm2" class="confirm" disabled>
+        <button
+          id="confirm2"
+          class="confirm"
+          disabled
+        >
           Etikett 2 übernehmen
         </button>
       </div>
     </section>
 
-    <!-- VERGLEICH -->
-    <section id="comparison" class="comparison hidden">
+    <section
+      id="comparison"
+      class="comparison hidden"
+    >
       <h2>Prüfergebnis</h2>
 
       <div class="comparison-grid">
@@ -519,9 +592,15 @@
         </div>
       </div>
 
-      <div id="comparisonResult" class="comparison-result"></div>
+      <div
+        id="comparisonResult"
+        class="comparison-result"
+      ></div>
 
-      <button id="resetButton" class="primary">
+      <button
+        id="resetButton"
+        class="primary"
+      >
         Neue Prüfung starten
       </button>
     </section>
@@ -534,130 +613,262 @@
       </div>
     </details>
 
-    <canvas id="sourceCanvas" class="hidden"></canvas>
+    <canvas
+      id="sourceCanvas"
+      class="hidden"
+    ></canvas>
   </main>
 
   <script
-    src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js">
-  </script>
+    src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js"
+  ></script>
 
   <script>
     "use strict";
 
-    const EXPECTED_DIGITS = 9;
-
     const elements = {
-      status: document.getElementById("status"),
+      status:
+        document.getElementById("status"),
 
-      progress1: document.getElementById("progress1"),
-      progress2: document.getElementById("progress2"),
-      progress3: document.getElementById("progress3"),
+      progress1:
+        document.getElementById("progress1"),
 
-      card1: document.getElementById("card1"),
-      card2: document.getElementById("card2"),
+      progress2:
+        document.getElementById("progress2"),
 
-      file1: document.getElementById("file1"),
-      file2: document.getElementById("file2"),
+      progress3:
+        document.getElementById("progress3"),
 
-      preview1: document.getElementById("preview1"),
-      preview2: document.getElementById("preview2"),
+      card1:
+        document.getElementById("card1"),
 
-      placeholder1: document.getElementById("placeholder1"),
-      placeholder2: document.getElementById("placeholder2"),
+      card2:
+        document.getElementById("card2"),
 
-      code1: document.getElementById("code1"),
-      code2: document.getElementById("code2"),
+      file1:
+        document.getElementById("file1"),
 
-      ocrInfo1: document.getElementById("ocrInfo1"),
-      ocrInfo2: document.getElementById("ocrInfo2"),
+      file2:
+        document.getElementById("file2"),
 
-      confirm1: document.getElementById("confirm1"),
-      confirm2: document.getElementById("confirm2"),
+      preview1:
+        document.getElementById("preview1"),
 
-      comparison: document.getElementById("comparison"),
-      finalCode1: document.getElementById("finalCode1"),
-      finalCode2: document.getElementById("finalCode2"),
-      comparisonResult: document.getElementById("comparisonResult"),
+      preview2:
+        document.getElementById("preview2"),
 
-      resetButton: document.getElementById("resetButton"),
-      debugOutput: document.getElementById("debugOutput"),
+      placeholder1:
+        document.getElementById("placeholder1"),
 
-      sourceCanvas: document.getElementById("sourceCanvas")
+      placeholder2:
+        document.getElementById("placeholder2"),
+
+      code1:
+        document.getElementById("code1"),
+
+      code2:
+        document.getElementById("code2"),
+
+      ocrInfo1:
+        document.getElementById("ocrInfo1"),
+
+      ocrInfo2:
+        document.getElementById("ocrInfo2"),
+
+      confirm1:
+        document.getElementById("confirm1"),
+
+      confirm2:
+        document.getElementById("confirm2"),
+
+      comparison:
+        document.getElementById("comparison"),
+
+      finalCode1:
+        document.getElementById("finalCode1"),
+
+      finalCode2:
+        document.getElementById("finalCode2"),
+
+      comparisonResult:
+        document.getElementById("comparisonResult"),
+
+      resetButton:
+        document.getElementById("resetButton"),
+
+      debugOutput:
+        document.getElementById("debugOutput"),
+
+      sourceCanvas:
+        document.getElementById("sourceCanvas")
     };
+
+
+    function createEmptyScan() {
+      return {
+        code: null,
+        confirmed: false,
+        previewUrl: null,
+
+        hasImage: false,
+        duplicateBlocked: false,
+
+        metadata: null
+      };
+    }
+
 
     const state = {
       worker: null,
       workerReady: false,
       workerLoading: false,
 
-      scan1: {
-        code: null,
-        confirmed: false,
-        hash: null,
-        previewUrl: null
-      },
+      scan1:
+        createEmptyScan(),
 
-      scan2: {
-        code: null,
-        confirmed: false,
-        hash: null,
-        previewUrl: null
-      }
+      scan2:
+        createEmptyScan()
     };
 
-    const digitCorrections = {
-      O: "0",
-      Q: "0",
-      I: "1",
-      L: "1",
-      Z: "2",
-      S: "5",
-      G: "6",
-      B: "8"
-    };
 
-    elements.file1.addEventListener("change", async () => {
-      const file = elements.file1.files?.[0];
+    elements.file1.addEventListener(
+      "change",
+      async () => {
+        const file =
+          elements.file1.files?.[0];
 
-      if (file) {
-        await processFile(file, 1);
+        if (file) {
+          await processFile(
+            file,
+            1
+          );
+        }
+
+        elements.file1.value = "";
       }
+    );
 
-      elements.file1.value = "";
-    });
 
-    elements.file2.addEventListener("change", async () => {
-      const file = elements.file2.files?.[0];
+    elements.file2.addEventListener(
+      "change",
+      async () => {
+        const file =
+          elements.file2.files?.[0];
 
-      if (file) {
-        await processFile(file, 2);
+        if (file) {
+          await processFile(
+            file,
+            2
+          );
+        }
+
+        elements.file2.value = "";
       }
+    );
 
-      elements.file2.value = "";
-    });
 
-    elements.code1.addEventListener("input", () => {
-      elements.code1.value = normalizeManualCode(elements.code1.value);
-      elements.confirm1.disabled = !isValidCode(elements.code1.value);
-    });
+    elements.code1.addEventListener(
+      "input",
+      () => {
+        elements.code1.value =
+          normalizeManualCode(
+            elements.code1.value
+          );
 
-    elements.code2.addEventListener("input", () => {
-      elements.code2.value = normalizeManualCode(elements.code2.value);
-      elements.confirm2.disabled = !isValidCode(elements.code2.value);
-    });
+        updateConfirmAvailability(1);
+      }
+    );
 
-    elements.confirm1.addEventListener("click", confirmFirstScan);
-    elements.confirm2.addEventListener("click", confirmSecondScan);
-    elements.resetButton.addEventListener("click", resetApplication);
 
-    function setStatus(message, type = "") {
-      elements.status.textContent = message;
-      elements.status.className = "status";
+    elements.code2.addEventListener(
+      "input",
+      () => {
+        elements.code2.value =
+          normalizeManualCode(
+            elements.code2.value
+          );
+
+        updateConfirmAvailability(2);
+      }
+    );
+
+
+    elements.confirm1.addEventListener(
+      "click",
+      confirmFirstScan
+    );
+
+
+    elements.confirm2.addEventListener(
+      "click",
+      confirmSecondScan
+    );
+
+
+    elements.resetButton.addEventListener(
+      "click",
+      resetApplication
+    );
+
+
+    function normalizeManualCode(value) {
+      return String(value || "")
+        .toUpperCase()
+        .trim();
+    }
+
+
+    function isValidCode(value) {
+      return /^D[0-9]+$/.test(
+        String(value || "")
+          .toUpperCase()
+          .trim()
+      );
+    }
+
+
+    function updateConfirmAvailability(
+      slotNumber
+    ) {
+      const slot =
+        slotNumber === 1
+          ? state.scan1
+          : state.scan2;
+
+      const input =
+        slotNumber === 1
+          ? elements.code1
+          : elements.code2;
+
+      const button =
+        slotNumber === 1
+          ? elements.confirm1
+          : elements.confirm2;
+
+      button.disabled =
+        !slot.hasImage ||
+        slot.duplicateBlocked ||
+        !isValidCode(input.value);
+    }
+
+
+    function setStatus(
+      message,
+      type = ""
+    ) {
+      elements.status.textContent =
+        message;
+
+      elements.status.className =
+        "status";
 
       if (type) {
-        elements.status.classList.add(type);
+        elements.status.classList.add(
+          type
+        );
       }
     }
+
 
     async function initializeWorker() {
       if (state.workerReady) {
@@ -682,37 +893,35 @@
       state.workerLoading = true;
 
       try {
-        setStatus("OCR-Modell wird geladen …", "scanning");
-
-        state.worker = await Tesseract.createWorker(
-          "eng",
-          1,
-          {
-            logger(message) {
-              if (message.status === "recognizing text") {
-                const percent = Math.round(
-                  (message.progress || 0) * 100
-                );
-
-                setStatus(
-                  `Texterkennung läuft: ${percent} %`,
-                  "scanning"
-                );
-              }
-            }
-          }
+        setStatus(
+          "OCR-Modell wird geladen …",
+          "scanning"
         );
 
-        await state.worker.setParameters({
-          tessedit_char_whitelist:
-            "D0123456789OQILSZGB -.:/_",
+        state.worker =
+          await Tesseract.createWorker(
+            "eng",
+            1,
+            {
+              logger(message) {
+                if (
+                  message.status ===
+                  "recognizing text"
+                ) {
+                  const percent =
+                    Math.round(
+                      (message.progress || 0) *
+                      100
+                    );
 
-          tessedit_pageseg_mode: "11",
-
-          preserve_interword_spaces: "1",
-
-          user_defined_dpi: "300"
-        });
+                  setStatus(
+                    `Texterkennung läuft: ${percent} %`,
+                    "scanning"
+                  );
+                }
+              }
+            }
+          );
 
         state.workerReady = true;
       } finally {
@@ -720,8 +929,56 @@
       }
     }
 
-    async function processFile(file, slotNumber) {
-      const slot = slotNumber === 1 ? state.scan1 : state.scan2;
+
+    async function configureCodeRecognition() {
+      /*
+       * Alle Buchstaben müssen erlaubt sein.
+       *
+       * Würde ausschließlich D erlaubt,
+       * könnte Tesseract ein sichtbares A
+       * zwangsweise als D interpretieren.
+       */
+      await state.worker.setParameters({
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+
+        tessedit_pageseg_mode:
+          "11",
+
+        preserve_interword_spaces:
+          "1",
+
+        user_defined_dpi:
+          "300"
+      });
+    }
+
+
+    async function configureIdentityRecognition() {
+      await state.worker.setParameters({
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.:/_()[]",
+
+        tessedit_pageseg_mode:
+          "11",
+
+        preserve_interword_spaces:
+          "1",
+
+        user_defined_dpi:
+          "300"
+      });
+    }
+
+
+    async function processFile(
+      file,
+      slotNumber
+    ) {
+      const slot =
+        slotNumber === 1
+          ? state.scan1
+          : state.scan2;
 
       const preview =
         slotNumber === 1
@@ -743,14 +1000,9 @@
           ? elements.ocrInfo1
           : elements.ocrInfo2;
 
-      const confirmButton =
-        slotNumber === 1
-          ? elements.confirm1
-          : elements.confirm2;
-
-      confirmButton.disabled = true;
-      codeInput.value = "";
-      info.textContent = "";
+      resetSlotForNewPhoto(
+        slotNumber
+      );
 
       setStatus(
         `Etikett ${slotNumber} wird vorbereitet …`,
@@ -758,57 +1010,138 @@
       );
 
       try {
-        const image = await loadImage(file);
+        if (!window.DuplicateFix) {
+          throw new Error(
+            "duplicate-fix.js wurde nicht geladen."
+          );
+        }
 
-        const sourceCanvas = drawImageToCanvas(
-          image,
-          elements.sourceCanvas,
-          2600
-        );
+        const image =
+          await loadImage(file);
 
-        const hash = calculateDifferenceHash(sourceCanvas);
-
-        if (slotNumber === 2 && state.scan1.hash) {
-          const distance = hammingDistance(
-            state.scan1.hash,
-            hash
+        const sourceCanvas =
+          drawImageToCanvas(
+            image,
+            elements.sourceCanvas,
+            2600
           );
 
-          if (distance <= 5) {
-            throw new Error(
-              "Das zweite Foto ist dem ersten Foto nahezu identisch. " +
-              "Bitte das andere Etikett fotografieren."
-            );
-          }
+        slot.previewUrl =
+          URL.createObjectURL(file);
 
-          if (distance <= 10) {
-            info.textContent =
-              "Hinweis: Beide Bilder sehen sich stark ähnlich. " +
-              "Bitte kontrollieren, ob wirklich das zweite Etikett " +
-              "fotografiert wurde.";
+        preview.src =
+          slot.previewUrl;
+
+        preview.classList.add(
+          "visible"
+        );
+
+        placeholder.classList.add(
+          "hidden"
+        );
+
+        const metadata =
+          await window.DuplicateFix
+            .prepareScan(
+              file,
+              sourceCanvas
+            );
+
+        slot.metadata =
+          metadata;
+
+        /*
+         * Vorprüfung des zweiten Fotos.
+         */
+        if (
+          slotNumber === 2 &&
+          state.scan1.metadata
+        ) {
+          const precheck =
+            window.DuplicateFix.precheck(
+              state.scan1.metadata,
+              metadata
+            );
+
+          appendDuplicateDebug(
+            "VORPRÜFUNG",
+            precheck
+          );
+
+          if (precheck.duplicate) {
+            blockSecondScan(
+              precheck.reason,
+              precheck
+            );
+
+            return;
           }
         }
 
-        revokePreview(slot);
-
-        slot.previewUrl = URL.createObjectURL(file);
-        preview.src = slot.previewUrl;
-        preview.classList.add("visible");
-        placeholder.classList.add("hidden");
-
-        slot.hash = hash;
-        slot.confirmed = false;
-
         await initializeWorker();
 
-        const result = await searchForDNumber(
-          sourceCanvas,
-          slotNumber
-        );
+        await configureCodeRecognition();
+
+        const result =
+          await searchForDNumber(
+            sourceCanvas,
+            slotNumber
+          );
+
+        await configureIdentityRecognition();
+
+        const identityText =
+          await readIdentityText(
+            sourceCanvas,
+            slotNumber
+          );
+
+        metadata.textSignature =
+          window.DuplicateFix
+            .createTextSignature(
+              identityText
+            );
+
+        await configureCodeRecognition();
+
+        /*
+         * Abschließende Doppel-Scan-Prüfung.
+         */
+        if (
+          slotNumber === 2 &&
+          state.scan1.metadata
+        ) {
+          const finalCheck =
+            window.DuplicateFix.finalCheck(
+              state.scan1.metadata,
+              metadata
+            );
+
+          appendDuplicateDebug(
+            "GESAMTPRÜFUNG",
+            finalCheck
+          );
+
+          if (finalCheck.duplicate) {
+            blockSecondScan(
+              finalCheck.reason,
+              finalCheck
+            );
+
+            return;
+          }
+        }
+
+        slot.hasImage = true;
+        slot.duplicateBlocked = false;
 
         appendDebug(
           `\nERGEBNIS ETIKETT ${slotNumber}\n` +
-          JSON.stringify(result, null, 2)
+          JSON.stringify(
+            result,
+            null,
+            2
+          )
         );
 
         if (!result.code) {
@@ -816,7 +1149,8 @@
 
           info.textContent =
             "Keine sichere D-Nummer erkannt. " +
-            "Du kannst den Wert manuell eintragen oder das Foto wiederholen.";
+            "Gültig ist ein einzelner Textblock aus D " +
+            "direkt gefolgt von einer Zahlenfolge.";
 
           setStatus(
             `Auf Etikett ${slotNumber} wurde keine sichere D-Nummer gefunden.`,
@@ -824,42 +1158,130 @@
           );
 
           codeInput.focus();
+
+          updateConfirmAvailability(
+            slotNumber
+          );
+
           return;
         }
 
-        slot.code = result.code;
-        codeInput.value = result.code;
-        confirmButton.disabled = false;
+        slot.code =
+          result.code;
+
+        codeInput.value =
+          result.code;
 
         info.textContent =
-          `${result.votes} OCR-Prüfung(en) unterstützten diesen Wert.`;
+          `${result.votes} voneinander unabhängige ` +
+          "OCR-Prüfungen erkannten denselben Wert.";
 
         setStatus(
           `Etikett ${slotNumber}: ${result.code} erkannt. ` +
           "Bitte kontrollieren und übernehmen.",
           "success"
         );
+
+        updateConfirmAvailability(
+          slotNumber
+        );
       } catch (error) {
         console.error(error);
 
+        slot.hasImage = false;
+
         setStatus(
-          error.message || String(error),
+          error.message ||
+          String(error),
           "error"
         );
 
         info.textContent =
-          "Foto erneut aufnehmen oder D-Nummer manuell eingeben.";
+          "Foto erneut aufnehmen.";
+
+        updateConfirmAvailability(
+          slotNumber
+        );
       }
     }
 
-    async function searchForDNumber(sourceCanvas, slotNumber) {
-      const passes = createRecognitionPasses(sourceCanvas);
 
-      const voteMap = new Map();
+    function resetSlotForNewPhoto(
+      slotNumber
+    ) {
+      const slot =
+        slotNumber === 1
+          ? state.scan1
+          : state.scan2;
+
+      const preview =
+        slotNumber === 1
+          ? elements.preview1
+          : elements.preview2;
+
+      const placeholder =
+        slotNumber === 1
+          ? elements.placeholder1
+          : elements.placeholder2;
+
+      const input =
+        slotNumber === 1
+          ? elements.code1
+          : elements.code2;
+
+      const info =
+        slotNumber === 1
+          ? elements.ocrInfo1
+          : elements.ocrInfo2;
+
+      revokePreview(slot);
+
+      slot.code = null;
+      slot.confirmed = false;
+      slot.hasImage = false;
+      slot.duplicateBlocked = false;
+      slot.metadata = null;
+
+      preview.src = "";
+
+      preview.classList.remove(
+        "visible"
+      );
+
+      placeholder.classList.remove(
+        "hidden"
+      );
+
+      input.value = "";
+      info.textContent = "";
+
+      updateConfirmAvailability(
+        slotNumber
+      );
+    }
+
+
+    async function searchForDNumber(
+      sourceCanvas,
+      slotNumber
+    ) {
+      const passes =
+        createRecognitionPasses(
+          sourceCanvas
+        );
+
+      const voteMap =
+        new Map();
+
       const rawResults = [];
 
-      for (let index = 0; index < passes.length; index += 1) {
-        const pass = passes[index];
+      for (
+        let index = 0;
+        index < passes.length;
+        index += 1
+      ) {
+        const pass =
+          passes[index];
 
         setStatus(
           `Etikett ${slotNumber}: Prüfung ` +
@@ -867,67 +1289,102 @@
           "scanning"
         );
 
-        const recognition = await state.worker.recognize(
-          pass.canvas
-        );
+        const recognition =
+          await state.worker.recognize(
+            pass.canvas
+          );
 
         const text =
           recognition?.data?.text || "";
 
         const confidence =
-          Number(recognition?.data?.confidence || 0);
+          Number(
+            recognition?.data?.confidence || 0
+          );
 
-        const candidates = extractStrictDCodes(text);
+        const candidates =
+          extractStrictDCodes(text);
 
         rawResults.push({
-          pass: pass.name,
+          pass:
+            pass.name,
+
           confidence,
-          text: compactText(text),
+
+          text:
+            compactText(text),
+
           candidates
         });
 
         appendDebug(
           `\nEtikett ${slotNumber} – ${pass.name}\n` +
           `Konfidenz: ${Math.round(confidence)} %\n` +
-          `Text: ${compactText(text)}\n` +
-          `Treffer: ${candidates.join(", ") || "keine"}`
+          `OCR-Text: ${compactText(text)}\n` +
+          `D-Treffer: ${
+            candidates.join(", ") ||
+            "keine"
+          }\n`
         );
 
-        for (const candidate of candidates) {
+        for (
+          const candidate
+          of candidates
+        ) {
           const current =
-            voteMap.get(candidate) || {
+            voteMap.get(candidate) ||
+            {
               votes: 0,
               confidenceSum: 0
             };
 
           current.votes += 1;
-          current.confidenceSum += confidence;
 
-          voteMap.set(candidate, current);
+          current.confidenceSum +=
+            confidence;
+
+          voteMap.set(
+            candidate,
+            current
+          );
         }
 
-        const currentWinner = chooseWinner(voteMap);
+        const currentWinner =
+          chooseWinner(voteMap);
 
         /*
-         * Früh abbrechen, wenn derselbe Code durch
-         * mindestens zwei unabhängige Bildbereiche bestätigt wurde.
+         * Ein Wert wird erst akzeptiert,
+         * wenn er mindestens zweimal erkannt wurde.
          */
-        if (currentWinner && currentWinner.votes >= 2) {
+        if (
+          currentWinner &&
+          currentWinner.votes >= 2
+        ) {
           return {
-            code: currentWinner.code,
-            votes: currentWinner.votes,
+            code:
+              currentWinner.code,
+
+            votes:
+              currentWinner.votes,
+
             averageConfidence:
               currentWinner.averageConfidence,
-            passes: rawResults
+
+            passes:
+              rawResults
           };
         }
 
         await delay(30);
       }
 
-      const winner = chooseWinner(voteMap);
+      const winner =
+        chooseWinner(voteMap);
 
-      if (!winner) {
+      if (
+        !winner ||
+        winner.votes < 2
+      ) {
         return {
           code: null,
           votes: 0,
@@ -936,141 +1393,299 @@
         };
       }
 
-      /*
-       * Ein einzelner Treffer wird angezeigt, muss aber
-       * vom Bediener sichtbar bestätigt werden.
-       */
       return {
-        code: winner.code,
-        votes: winner.votes,
-        averageConfidence: winner.averageConfidence,
-        passes: rawResults
+        code:
+          winner.code,
+
+        votes:
+          winner.votes,
+
+        averageConfidence:
+          winner.averageConfidence,
+
+        passes:
+          rawResults
       };
     }
 
-    function createRecognitionPasses(sourceCanvas) {
-      const width = sourceCanvas.width;
-      const height = sourceCanvas.height;
 
-      const passes = [];
-
+    function extractStrictDCodes(text) {
       /*
-       * Gesamtbild.
+       * Der OCR-Text wird ausschließlich
+       * an Leerzeichen, Tabs und Zeilenumbrüchen getrennt.
+       *
+       * Mehrere Textblöcke werden niemals verbunden.
        */
-      passes.push({
-        name: "Gesamtbild",
-        canvas: createPreparedCrop(
-          sourceCanvas,
-          {
-            x: 0,
-            y: 0,
-            width,
-            height
-          },
-          false
-        )
-      });
+      const tokens =
+        String(text || "")
+          .toUpperCase()
+          .replace(/\r/g, "")
+          .split(/\s+/)
+          .filter(Boolean);
 
-      /*
-       * Vier überlappende horizontale Bereiche.
-       * Dadurch muss die D-Nummer nicht an einer festen Position liegen.
-       */
-      const bands = [
-        { start: 0.00, end: 0.36 },
-        { start: 0.22, end: 0.58 },
-        { start: 0.43, end: 0.79 },
-        { start: 0.64, end: 1.00 }
-      ];
+      const results =
+        new Set();
 
-      bands.forEach((band, index) => {
-        const y = Math.round(height * band.start);
-        const cropHeight = Math.round(
-          height * (band.end - band.start)
-        );
+      for (const token of tokens) {
+        /*
+         * Erlaubt:
+         * D direkt gefolgt von mindestens einer Ziffer.
+         *
+         * Nicht erlaubt:
+         * D 123
+         * A123
+         * DA123
+         * D-123
+         * D123A
+         */
+        if (/^D[0-9]+$/.test(token)) {
+          results.add(token);
+        }
+      }
 
-        passes.push({
-          name: `Textbereich ${index + 1}`,
-          canvas: createPreparedCrop(
-            sourceCanvas,
-            {
-              x: 0,
-              y,
-              width,
-              height: cropHeight
-            },
-            false
-          )
-        });
-      });
-
-      /*
-       * Eine zusätzliche Schwarz-Weiß-Prüfung des Gesamtbildes.
-       */
-      passes.push({
-        name: "Gesamtbild Schwarz-Weiß",
-        canvas: createPreparedCrop(
-          sourceCanvas,
-          {
-            x: 0,
-            y: 0,
-            width,
-            height
-          },
-          true
-        )
-      });
-
-      return passes;
+      return [...results];
     }
+
+
+    function chooseWinner(voteMap) {
+      let winner = null;
+
+      for (
+        const [code, data]
+        of voteMap.entries()
+      ) {
+        const averageConfidence =
+          data.confidenceSum /
+          Math.max(
+            1,
+            data.votes
+          );
+
+        const candidate = {
+          code,
+          votes:
+            data.votes,
+          averageConfidence
+        };
+
+        if (
+          !winner ||
+          candidate.votes >
+            winner.votes ||
+          (
+            candidate.votes ===
+              winner.votes &&
+            candidate.averageConfidence >
+              winner.averageConfidence
+          )
+        ) {
+          winner =
+            candidate;
+        }
+      }
+
+      return winner;
+    }
+
+
+    function createRecognitionPasses(
+      sourceCanvas
+    ) {
+      const width =
+        sourceCanvas.width;
+
+      const height =
+        sourceCanvas.height;
+
+      return [
+        {
+          name:
+            "Gesamtbild",
+
+          canvas:
+            createPreparedCrop(
+              sourceCanvas,
+              {
+                x: 0,
+                y: 0,
+                width,
+                height
+              },
+              1.25
+            )
+        },
+
+        {
+          name:
+            "Untere Bildhälfte",
+
+          canvas:
+            createPreparedCrop(
+              sourceCanvas,
+              {
+                x: 0,
+                y:
+                  height * 0.45,
+
+                width,
+
+                height:
+                  height * 0.55
+              },
+              1.3
+            )
+        },
+
+        {
+          name:
+            "Unteres Bilddrittel",
+
+          canvas:
+            createPreparedCrop(
+              sourceCanvas,
+              {
+                x: 0,
+                y:
+                  height * 0.64,
+
+                width,
+
+                height:
+                  height * 0.36
+              },
+              1.35
+            )
+        },
+
+        {
+          name:
+            "Mittlerer unterer Bereich",
+
+          canvas:
+            createPreparedCrop(
+              sourceCanvas,
+              {
+                x: 0,
+                y:
+                  height * 0.32,
+
+                width,
+
+                height:
+                  height * 0.55
+              },
+              1.3
+            )
+        },
+
+        {
+          name:
+            "Gesamtbild hoher Kontrast",
+
+          canvas:
+            createPreparedCrop(
+              sourceCanvas,
+              {
+                x: 0,
+                y: 0,
+                width,
+                height
+              },
+              1.55
+            )
+        }
+      ];
+    }
+
 
     function createPreparedCrop(
       sourceCanvas,
       crop,
-      binary
+      contrastFactor = 1.3
     ) {
-      const targetHeight = 900;
+      const targetHeight = 1000;
 
-      let scale = Math.max(
-        1,
-        targetHeight / crop.height
-      );
+      let scale =
+        Math.max(
+          1,
+          targetHeight /
+          Math.max(
+            1,
+            crop.height
+          )
+        );
 
-      scale = Math.min(scale, 4);
+      scale =
+        Math.min(
+          scale,
+          4
+        );
 
       let targetWidth =
-        Math.round(crop.width * scale);
+        Math.round(
+          crop.width *
+          scale
+        );
 
       let targetCropHeight =
-        Math.round(crop.height * scale);
+        Math.round(
+          crop.height *
+          scale
+        );
 
       const maxWidth = 1800;
 
-      if (targetWidth > maxWidth) {
-        const reduction = maxWidth / targetWidth;
+      if (
+        targetWidth >
+        maxWidth
+      ) {
+        const reduction =
+          maxWidth /
+          targetWidth;
 
-        targetWidth = Math.round(
-          targetWidth * reduction
-        );
+        targetWidth =
+          Math.round(
+            targetWidth *
+            reduction
+          );
 
-        targetCropHeight = Math.round(
-          targetCropHeight * reduction
-        );
+        targetCropHeight =
+          Math.round(
+            targetCropHeight *
+            reduction
+          );
       }
 
-      const canvas = document.createElement("canvas");
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
 
-      canvas.width = Math.max(1, targetWidth);
-      canvas.height = Math.max(1, targetCropHeight);
+      canvas.width =
+        Math.max(
+          1,
+          targetWidth
+        );
 
-      const context = canvas.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
+      canvas.height =
+        Math.max(
+          1,
+          targetCropHeight
+        );
 
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
+      const context =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently: true
+          }
+        );
+
+      context.imageSmoothingEnabled =
+        true;
+
+      context.imageSmoothingQuality =
+        "high";
 
       context.drawImage(
         sourceCanvas,
@@ -1086,14 +1701,18 @@
         canvas.height
       );
 
-      const imageData = context.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
+      const imageData =
+        context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
 
-      enhanceImage(imageData, binary);
+      enhanceImage(
+        imageData,
+        contrastFactor
+      );
 
       context.putImageData(
         imageData,
@@ -1104,150 +1723,157 @@
       return canvas;
     }
 
-    function enhanceImage(imageData, binary) {
-      const data = imageData.data;
-      const grayscale = [];
 
-      for (let index = 0; index < data.length; index += 4) {
+    function enhanceImage(
+      imageData,
+      contrastFactor
+    ) {
+      const data =
+        imageData.data;
+
+      for (
+        let index = 0;
+        index < data.length;
+        index += 4
+      ) {
+        const grayscale =
+          data[index] *
+            0.299 +
+          data[index + 1] *
+            0.587 +
+          data[index + 2] *
+            0.114;
+
         const value =
-          data[index] * 0.299 +
-          data[index + 1] * 0.587 +
-          data[index + 2] * 0.114;
+          Math.max(
+            0,
+            Math.min(
+              255,
 
-        grayscale.push(value);
+              (
+                grayscale -
+                128
+              ) *
+              contrastFactor +
+              128
+            )
+          );
+
+        data[index] =
+          value;
+
+        data[index + 1] =
+          value;
+
+        data[index + 2] =
+          value;
       }
+    }
 
-      const average =
-        grayscale.reduce(
-          (sum, value) => sum + value,
-          0
-        ) / Math.max(1, grayscale.length);
 
-      for (let pixel = 0; pixel < grayscale.length; pixel += 1) {
-        const dataIndex = pixel * 4;
-
-        let value =
-          (grayscale[pixel] - 128) * 1.45 + 128;
-
-        value = Math.max(
-          0,
-          Math.min(255, value)
+    async function readIdentityText(
+      sourceCanvas,
+      slotNumber
+    ) {
+      try {
+        setStatus(
+          `Etikett ${slotNumber}: Etikettenidentität wird geprüft …`,
+          "scanning"
         );
 
-        if (binary) {
-          value =
-            value < average * 0.93
-              ? 0
-              : 255;
-        }
+        const prepared =
+          createPreparedCrop(
+            sourceCanvas,
+            {
+              x: 0,
+              y: 0,
+              width:
+                sourceCanvas.width,
+              height:
+                sourceCanvas.height
+            },
+            1.2
+          );
 
-        data[dataIndex] = value;
-        data[dataIndex + 1] = value;
-        data[dataIndex + 2] = value;
+        const recognition =
+          await state.worker.recognize(
+            prepared
+          );
+
+        const text =
+          recognition?.data?.text || "";
+
+        appendDebug(
+          `\nIDENTITÄTSTEXT ETIKETT ${slotNumber}\n` +
+          `${compactText(text)}\n`
+        );
+
+        return text;
+      } catch (error) {
+        appendDebug(
+          "\nIdentitätstext nicht verfügbar: " +
+          `${error.message || String(error)}\n`
+        );
+
+        return "";
       }
     }
 
-    function extractStrictDCodes(text) {
-      const normalizedText =
-        String(text || "")
-          .toUpperCase()
-          .replace(/[\r\n]+/g, " ");
-
-      /*
-       * Ein echtes D muss von OCR erkannt worden sein.
-       * Eine führende 0, O oder Q wird nicht in D umgewandelt.
-       */
-      const pattern =
-        /(?:^|[^A-Z0-9])D[\s:._/-]*((?:[0-9OQILSZGB][\s:._/-]*){9})(?![0-9OQILSZGB])/g;
-
-      const results = new Set();
-
-      let match;
-
-      while ((match = pattern.exec(normalizedText)) !== null) {
-        const digits = normalizeDigits(match[1]);
-
-        if (digits.length === EXPECTED_DIGITS) {
-          results.add(`D${digits}`);
-        }
-      }
-
-      return [...results];
-    }
-
-    function normalizeDigits(value) {
-      return String(value)
-        .toUpperCase()
-        .split("")
-        .map(character => {
-          if (/[0-9]/.test(character)) {
-            return character;
-          }
-
-          return digitCorrections[character] || "";
-        })
-        .join("")
-        .replace(/\D/g, "");
-    }
-
-    function chooseWinner(voteMap) {
-      let winner = null;
-
-      for (const [code, data] of voteMap.entries()) {
-        const averageConfidence =
-          data.confidenceSum /
-          Math.max(1, data.votes);
-
-        const candidate = {
-          code,
-          votes: data.votes,
-          averageConfidence
-        };
-
-        if (
-          !winner ||
-          candidate.votes > winner.votes ||
-          (
-            candidate.votes === winner.votes &&
-            candidate.averageConfidence >
-              winner.averageConfidence
-          )
-        ) {
-          winner = candidate;
-        }
-      }
-
-      return winner;
-    }
 
     function confirmFirstScan() {
-      const code = normalizeManualCode(
-        elements.code1.value
-      );
+      const code =
+        normalizeManualCode(
+          elements.code1.value
+        );
 
-      if (!isValidCode(code)) {
+      if (
+        !state.scan1.hasImage ||
+        state.scan1.duplicateBlocked
+      ) {
         setStatus(
-          "Die erste D-Nummer muss aus D und genau neun Ziffern bestehen.",
+          "Bitte zuerst ein gültiges Foto von Etikett 1 aufnehmen.",
           "error"
         );
 
         return;
       }
 
-      state.scan1.code = code;
-      state.scan1.confirmed = true;
+      if (!isValidCode(code)) {
+        setStatus(
+          "Die D-Nummer muss aus D direkt gefolgt von Ziffern bestehen.",
+          "error"
+        );
 
-      elements.code1.value = code;
-      elements.code1.disabled = true;
-      elements.confirm1.disabled = true;
-      elements.file1.disabled = true;
+        return;
+      }
 
-      elements.progress1.classList.remove("active");
-      elements.progress1.classList.add("complete");
+      state.scan1.code =
+        code;
 
-      elements.progress2.classList.add("active");
+      state.scan1.confirmed =
+        true;
 
-      elements.card2.classList.remove("hidden");
+      elements.code1.value =
+        code;
+
+      elements.code1.disabled =
+        true;
+
+      elements.confirm1.disabled =
+        true;
+
+      elements.file1.disabled =
+        true;
+
+      elements.progress1.className =
+        "progress-item complete";
+
+      elements.progress2.className =
+        "progress-item active";
+
+      elements.card2.classList.remove(
+        "hidden"
+      );
 
       setStatus(
         "Etikett 1 wurde übernommen. Jetzt Etikett 2 fotografieren.",
@@ -1255,47 +1881,82 @@
       );
 
       elements.card2.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+        behavior:
+          "smooth",
+
+        block:
+          "start"
       });
     }
 
-    function confirmSecondScan() {
-      const code = normalizeManualCode(
-        elements.code2.value
-      );
 
-      if (!isValidCode(code)) {
+    function confirmSecondScan() {
+      const code =
+        normalizeManualCode(
+          elements.code2.value
+        );
+
+      if (
+        !state.scan2.hasImage ||
+        state.scan2.duplicateBlocked
+      ) {
         setStatus(
-          "Die zweite D-Nummer muss aus D und genau neun Ziffern bestehen.",
+          "Bitte ein gültiges Foto des zweiten Etiketts aufnehmen.",
           "error"
         );
 
         return;
       }
 
-      state.scan2.code = code;
-      state.scan2.confirmed = true;
+      if (!isValidCode(code)) {
+        setStatus(
+          "Die D-Nummer muss aus D direkt gefolgt von Ziffern bestehen.",
+          "error"
+        );
 
-      elements.code2.value = code;
-      elements.code2.disabled = true;
-      elements.confirm2.disabled = true;
-      elements.file2.disabled = true;
+        return;
+      }
 
-      elements.progress2.classList.remove("active");
-      elements.progress2.classList.add("complete");
+      state.scan2.code =
+        code;
 
-      elements.progress3.classList.add("active");
+      state.scan2.confirmed =
+        true;
+
+      elements.code2.value =
+        code;
+
+      elements.code2.disabled =
+        true;
+
+      elements.confirm2.disabled =
+        true;
+
+      elements.file2.disabled =
+        true;
+
+      elements.progress2.className =
+        "progress-item complete";
+
+      elements.progress3.className =
+        "progress-item active";
 
       showComparison();
     }
 
-    function showComparison() {
-      const code1 = state.scan1.code;
-      const code2 = state.scan2.code;
 
-      elements.finalCode1.textContent = code1;
-      elements.finalCode2.textContent = code2;
+    function showComparison() {
+      const code1 =
+        state.scan1.code;
+
+      const code2 =
+        state.scan2.code;
+
+      elements.finalCode1.textContent =
+        code1;
+
+      elements.finalCode2.textContent =
+        code2;
 
       elements.comparison.classList.remove(
         "hidden",
@@ -1304,7 +1965,9 @@
       );
 
       if (code1 === code2) {
-        elements.comparison.classList.add("success");
+        elements.comparison.classList.add(
+          "success"
+        );
 
         elements.comparisonResult.textContent =
           "✓ Die Etiketten passen zusammen.";
@@ -1320,7 +1983,9 @@
           120
         ]);
       } else {
-        elements.comparison.classList.add("error");
+        elements.comparison.classList.add(
+          "error"
+        );
 
         elements.comparisonResult.textContent =
           "✕ Die Etiketten passen nicht zusammen.";
@@ -1337,33 +2002,99 @@
         ]);
       }
 
-      elements.progress3.classList.remove("active");
-      elements.progress3.classList.add("complete");
+      elements.progress3.className =
+        "progress-item complete";
 
       elements.comparison.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+        behavior:
+          "smooth",
+
+        block:
+          "start"
       });
     }
 
-    function normalizeManualCode(value) {
-      return String(value || "")
-        .toUpperCase()
-        .replace(/\s+/g, "")
-        .replace(/[^D0-9]/g, "")
-        .slice(0, EXPECTED_DIGITS + 1);
+
+    function blockSecondScan(
+      reason,
+      metrics
+    ) {
+      resetSlotForNewPhoto(2);
+
+      state.scan2.duplicateBlocked =
+        true;
+
+      elements.ocrInfo2.textContent =
+        "Der zweite Scan wurde verworfen. " +
+        "Bitte fotografiere das andere Etikett.";
+
+      setStatus(
+        "Doppelter Scan verhindert: " +
+        reason,
+        "error"
+      );
+
+      appendDebug(
+        "\nDOPPEL-SCAN BLOCKIERT\n" +
+        `Grund: ${reason}\n` +
+        `Identische Datei: ${
+          metrics?.exactFile
+            ? "ja"
+            : "nein"
+        }\n` +
+        `Bildähnlichkeit: ${
+          formatPercent(
+            metrics?.visualSimilarity
+          )
+        }\n` +
+        `Textähnlichkeit: ${
+          formatPercent(
+            metrics?.textSimilarity
+          )
+        }\n` +
+        `Gemeinsame Kennungen: ${
+          metrics?.commonStrong ?? "—"
+        }\n`
+      );
+
+      updateConfirmAvailability(2);
+
+      navigator.vibrate?.([
+        200,
+        80,
+        200
+      ]);
     }
 
-    function isValidCode(value) {
-      const pattern =
-        new RegExp(
-          `^D\\d{${EXPECTED_DIGITS}}$`
-        );
 
-      return pattern.test(
-        String(value || "").toUpperCase()
+    function appendDuplicateDebug(
+      heading,
+      result
+    ) {
+      appendDebug(
+        `\nDOPPEL-SCAN-${heading}\n` +
+        `Ergebnis: ${
+          result.duplicate
+            ? "BLOCKIEREN"
+            : "ZULASSEN"
+        }\n` +
+        `Grund: ${result.reason}\n` +
+        `Bildähnlichkeit: ${
+          formatPercent(
+            result.visualSimilarity
+          )
+        }\n` +
+        `Textähnlichkeit: ${
+          formatPercent(
+            result.textSimilarity
+          )
+        }\n` +
+        `Gemeinsame Kennungen: ${
+          result.commonStrong ?? "—"
+        }\n`
       );
     }
+
 
     function drawImageToCanvas(
       image,
@@ -1378,31 +2109,42 @@
         image.height ||
         image.naturalHeight;
 
-      const scale = Math.min(
-        1,
-        maximumSide /
+      const scale =
+        Math.min(
+          1,
+
+          maximumSide /
           Math.max(
             originalWidth,
             originalHeight
           )
-      );
+        );
 
-      canvas.width = Math.max(
-        1,
-        Math.round(originalWidth * scale)
-      );
+      canvas.width =
+        Math.max(
+          1,
+          Math.round(
+            originalWidth *
+            scale
+          )
+        );
 
-      canvas.height = Math.max(
-        1,
-        Math.round(originalHeight * scale)
-      );
+      canvas.height =
+        Math.max(
+          1,
+          Math.round(
+            originalHeight *
+            scale
+          )
+        );
 
-      const context = canvas.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
+      const context =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently: true
+          }
+        );
 
       context.drawImage(
         image,
@@ -1415,18 +2157,22 @@
       return canvas;
     }
 
+
     async function loadImage(file) {
-      if ("createImageBitmap" in window) {
+      if (
+        "createImageBitmap" in window
+      ) {
         try {
           return await createImageBitmap(
             file,
             {
-              imageOrientation: "from-image"
+              imageOrientation:
+                "from-image"
             }
           );
         } catch (error) {
           console.warn(
-            "createImageBitmap fehlgeschlagen, verwende Fallback.",
+            "createImageBitmap fehlgeschlagen.",
             error
           );
         }
@@ -1434,8 +2180,11 @@
 
       return await new Promise(
         (resolve, reject) => {
-          const image = new Image();
-          const url = URL.createObjectURL(file);
+          const image =
+            new Image();
+
+          const url =
+            URL.createObjectURL(file);
 
           image.onload = () => {
             URL.revokeObjectURL(url);
@@ -1452,136 +2201,90 @@
             );
           };
 
-          image.src = url;
+          image.src =
+            url;
         }
       );
     }
 
-    /*
-     * Lokaler Bildfingerabdruck.
-     * Er wird nur im Arbeitsspeicher gehalten.
-     */
-    function calculateDifferenceHash(sourceCanvas) {
-      const canvas = document.createElement("canvas");
-
-      canvas.width = 9;
-      canvas.height = 8;
-
-      const context = canvas.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
-
-      context.drawImage(
-        sourceCanvas,
-        0,
-        0,
-        9,
-        8
-      );
-
-      const data = context.getImageData(
-        0,
-        0,
-        9,
-        8
-      ).data;
-
-      const values = [];
-
-      for (let index = 0; index < data.length; index += 4) {
-        values.push(
-          data[index] * 0.299 +
-          data[index + 1] * 0.587 +
-          data[index + 2] * 0.114
-        );
-      }
-
-      let hash = "";
-
-      for (let y = 0; y < 8; y += 1) {
-        for (let x = 0; x < 8; x += 1) {
-          const left = values[y * 9 + x];
-          const right = values[y * 9 + x + 1];
-
-          hash += left > right ? "1" : "0";
-        }
-      }
-
-      return hash;
-    }
-
-    function hammingDistance(first, second) {
-      if (
-        !first ||
-        !second ||
-        first.length !== second.length
-      ) {
-        return Infinity;
-      }
-
-      let distance = 0;
-
-      for (let index = 0; index < first.length; index += 1) {
-        if (first[index] !== second[index]) {
-          distance += 1;
-        }
-      }
-
-      return distance;
-    }
 
     function revokePreview(slot) {
       if (slot.previewUrl) {
-        URL.revokeObjectURL(slot.previewUrl);
-        slot.previewUrl = null;
+        URL.revokeObjectURL(
+          slot.previewUrl
+        );
+
+        slot.previewUrl =
+          null;
       }
     }
+
 
     function compactText(text) {
       return String(text || "")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 700);
+        .slice(0, 1000);
     }
+
 
     function appendDebug(text) {
       if (
         elements.debugOutput.textContent ===
         "Noch keine OCR-Prüfung durchgeführt."
       ) {
-        elements.debugOutput.textContent = "";
+        elements.debugOutput.textContent =
+          "";
       }
 
       elements.debugOutput.textContent +=
         `${text}\n`;
     }
 
-    function delay(milliseconds) {
-      return new Promise(resolve => {
-        setTimeout(resolve, milliseconds);
-      });
+
+    function formatPercent(value) {
+      if (
+        value == null ||
+        !Number.isFinite(value)
+      ) {
+        return "—";
+      }
+
+      return `${
+        Math.round(
+          value *
+          100
+        )
+      } %`;
     }
 
+
+    function delay(milliseconds) {
+      return new Promise(
+        resolve => {
+          setTimeout(
+            resolve,
+            milliseconds
+          );
+        }
+      );
+    }
+
+
     function resetApplication() {
-      revokePreview(state.scan1);
-      revokePreview(state.scan2);
+      revokePreview(
+        state.scan1
+      );
 
-      state.scan1 = {
-        code: null,
-        confirmed: false,
-        hash: null,
-        previewUrl: null
-      };
+      revokePreview(
+        state.scan2
+      );
 
-      state.scan2 = {
-        code: null,
-        confirmed: false,
-        hash: null,
-        previewUrl: null
-      };
+      state.scan1 =
+        createEmptyScan();
+
+      state.scan2 =
+        createEmptyScan();
 
       elements.code1.value = "";
       elements.code2.value = "";
@@ -1598,17 +2301,32 @@
       elements.preview1.src = "";
       elements.preview2.src = "";
 
-      elements.preview1.classList.remove("visible");
-      elements.preview2.classList.remove("visible");
+      elements.preview1.classList.remove(
+        "visible"
+      );
 
-      elements.placeholder1.classList.remove("hidden");
-      elements.placeholder2.classList.remove("hidden");
+      elements.preview2.classList.remove(
+        "visible"
+      );
+
+      elements.placeholder1.classList.remove(
+        "hidden"
+      );
+
+      elements.placeholder2.classList.remove(
+        "hidden"
+      );
 
       elements.ocrInfo1.textContent = "";
       elements.ocrInfo2.textContent = "";
 
-      elements.card2.classList.add("hidden");
-      elements.comparison.classList.add("hidden");
+      elements.card2.classList.add(
+        "hidden"
+      );
+
+      elements.comparison.classList.add(
+        "hidden"
+      );
 
       elements.progress1.className =
         "progress-item active";
@@ -1632,14 +2350,25 @@
       });
     }
 
-    window.addEventListener("beforeunload", async () => {
-      revokePreview(state.scan1);
-      revokePreview(state.scan2);
 
-      if (state.worker) {
-        await state.worker.terminate();
+    window.addEventListener(
+      "beforeunload",
+      async () => {
+        revokePreview(
+          state.scan1
+        );
+
+        revokePreview(
+          state.scan2
+        );
+
+        if (state.worker) {
+          await state.worker.terminate();
+        }
       }
-    });
+    );
   </script>
+
+  <script src="duplicate-fix.js?v=11"></script>
 </body>
 </html>
