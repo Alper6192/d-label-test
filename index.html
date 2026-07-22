@@ -29,7 +29,7 @@
    * ausschließlich D und Ziffern erlaubt.
    */
   const CODE_WHITELIST =
-    "D0123456789";
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
   /*
    * Für den zusätzlichen Textvergleich werden
@@ -98,25 +98,30 @@
    * D123-456
    */
   extractStrictDCodes =
-    function extractStrictDCodesSimple(text) {
-      const tokens =
-        String(text || "")
-          .toUpperCase()
-          .replace(/\r/g, "")
-          .split(/\s+/)
-          .filter(Boolean);
+  function extractStrictDCodesSimple(text) {
+    const tokens =
+      String(text || "")
+        .toUpperCase()
+        .replace(/\r/g, "")
+        .split(/\s+/)
+        .filter(Boolean);
 
-      const results =
-        new Set();
+    const results = new Set();
 
-      for (const token of tokens) {
-        if (/^D[0-9]+$/.test(token)) {
-          results.add(token);
-        }
+    for (const token of tokens) {
+      /*
+       * Ausschließlich:
+       * D direkt gefolgt von Ziffern.
+       *
+       * Beim Leerzeichen endet der Textblock.
+       */
+      if (/^D[0-9]+$/.test(token)) {
+        results.add(token);
       }
+    }
 
-      return [...results];
-    };
+    return [...results];
+  };
 
 
   /*
@@ -154,132 +159,140 @@
    * Text ausgewertet. Benachbarte Zahlen werden nicht
    * geometrisch oder nachträglich zusammengefügt.
    */
-  searchForDNumber =
-    async function searchForDNumberSimple(
-      sourceCanvas,
-      slotNumber
+searchForDNumber =
+  async function searchForDNumberReliable(
+    sourceCanvas,
+    slotNumber
+  ) {
+    /*
+     * Die Schwarz-Weiß-Variante kann Buchstabenformen
+     * verfälschen, zum Beispiel A zu D.
+     */
+    const passes =
+      createRecognitionPasses(sourceCanvas)
+        .filter(pass =>
+          !pass.name
+            .toLowerCase()
+            .includes("schwarz-weiß")
+        );
+
+    const voteMap = new Map();
+    const rawResults = [];
+
+    for (
+      let index = 0;
+      index < passes.length;
+      index += 1
     ) {
-      const passes =
-        createRecognitionPasses(
-          sourceCanvas
+      const pass = passes[index];
+
+      setStatus(
+        `Etikett ${slotNumber}: Prüfung ` +
+        `${index + 1} von ${passes.length} – ${pass.name}`,
+        "scanning"
+      );
+
+      const recognition =
+        await state.worker.recognize(
+          pass.canvas
         );
 
-      const voteMap =
-        new Map();
+      const text =
+        recognition?.data?.text || "";
 
-      const rawResults = [];
-
-      for (
-        let index = 0;
-        index < passes.length;
-        index += 1
-      ) {
-        const pass =
-          passes[index];
-
-        setStatus(
-          `Etikett ${slotNumber}: Prüfung ` +
-          `${index + 1} von ${passes.length} – ${pass.name}`,
-          "scanning"
+      const confidence =
+        Number(
+          recognition?.data?.confidence || 0
         );
 
-        const recognition =
-          await state.worker.recognize(
-            pass.canvas
-          );
+      const candidates =
+        extractStrictDCodes(text);
 
-        const text =
-          recognition?.data?.text || "";
+      rawResults.push({
+        pass: pass.name,
+        confidence,
+        text: compactText(text),
+        candidates
+      });
 
-        const confidence =
-          Number(
-            recognition?.data?.confidence || 0
-          );
+      appendDebug(
+        `\nEtikett ${slotNumber} – ${pass.name}\n` +
+        `Konfidenz: ${Math.round(confidence)} %\n` +
+        `OCR-Text: ${compactText(text)}\n` +
+        `Gültige D-Nummern: ${
+          candidates.join(", ") || "keine"
+        }\n`
+      );
 
-        const candidates =
-          extractStrictDCodes(text);
-
-        rawResults.push({
-          pass: pass.name,
-          confidence,
-          text: compactText(text),
-          candidates
-        });
-
-        appendDebug(
-          `\nEtikett ${slotNumber} – ${pass.name}\n` +
-          `Konfidenz: ${Math.round(confidence)} %\n` +
-          `OCR-Text: ${compactText(text)}\n` +
-          `Gültige D-Nummern: ${
-            candidates.join(", ") || "keine"
-          }\n`
-        );
-
-        for (const candidate of candidates) {
-          const current =
-            voteMap.get(candidate) || {
-              votes: 0,
-              confidenceSum: 0
-            };
-
-          current.votes += 1;
-          current.confidenceSum +=
-            confidence;
-
-          voteMap.set(
-            candidate,
-            current
-          );
-        }
-
-        const currentWinner =
-          chooseWinner(voteMap);
-
-        /*
-         * Frühzeitiger Erfolg, wenn derselbe Wert
-         * in mindestens zwei OCR-Prüfungen vorkommt.
-         */
-        if (
-          currentWinner &&
-          currentWinner.votes >= 2
-        ) {
-          return {
-            code: currentWinner.code,
-            votes: currentWinner.votes,
-            averageConfidence:
-              currentWinner.averageConfidence,
-            passes: rawResults
+      for (const candidate of candidates) {
+        const current =
+          voteMap.get(candidate) || {
+            votes: 0,
+            confidenceSum: 0,
+            passes: []
           };
-        }
 
-        await delay(30);
+        current.votes += 1;
+        current.confidenceSum += confidence;
+        current.passes.push(pass.name);
+
+        voteMap.set(
+          candidate,
+          current
+        );
       }
 
-      const winner =
+      const currentWinner =
         chooseWinner(voteMap);
 
-      if (!winner) {
+      /*
+       * Nur akzeptieren, wenn exakt dieselbe D-Nummer
+       * in mindestens zwei verschiedenen OCR-Durchläufen
+       * erkannt wurde.
+       */
+      if (
+        currentWinner &&
+        currentWinner.votes >= 2
+      ) {
         return {
-          code: null,
-          votes: 0,
-          averageConfidence: 0,
+          code: currentWinner.code,
+          votes: currentWinner.votes,
+          averageConfidence:
+            currentWinner.averageConfidence,
           passes: rawResults
         };
       }
 
-      /*
-       * Auch ein einzelner Treffer wird angezeigt.
-       * Der Benutzer muss ihn anschließend bestätigen.
-       */
+      await delay(30);
+    }
+
+    const winner =
+      chooseWinner(voteMap);
+
+    /*
+     * Ein einzelner Treffer ist nicht zuverlässig genug.
+     * Er wird nicht mehr automatisch übernommen.
+     */
+    if (
+      !winner ||
+      winner.votes < 2
+    ) {
       return {
-        code: winner.code,
-        votes: winner.votes,
-        averageConfidence:
-          winner.averageConfidence,
+        code: null,
+        votes: 0,
+        averageConfidence: 0,
         passes: rawResults
       };
-    };
+    }
 
+    return {
+      code: winner.code,
+      votes: winner.votes,
+      averageConfidence:
+        winner.averageConfidence,
+      passes: rawResults
+    };
+  };
 
   /*
    * =========================================================
