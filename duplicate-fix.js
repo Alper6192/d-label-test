@@ -1,33 +1,43 @@
 "use strict";
 
 (() => {
-  const VERSION = "12.0";
+  const VERSION = "13.0";
 
-  /*
-   * Grenzwerte für die Doppel-Scan-Erkennung.
-   *
-   * Unterschiedliche Etiketten mit ähnlichem Aufbau
-   * sollen nicht vorschnell blockiert werden.
-   */
-  const LIMITS = Object.freeze({
-    visualOnly: 0.99,
+  const SETTINGS = Object.freeze({
+    /*
+     * Es werden ausschließlich Querformatfotos akzeptiert.
+     */
+    requireLandscape: true,
 
-    strongTextSimilarity: 0.93,
-    visualWithStrongText: 0.74,
+    /*
+     * Kleinere Bilder beschleunigen OCR und Bildvergleich.
+     */
+    maximumWidth: 1400,
+    maximumHeight: 900,
+
+    /*
+     * Rein visuell nur fast identische Bilder blockieren.
+     */
+    visualOnlyDuplicate: 0.995,
+
+    /*
+     * Textvergleich nach der OCR.
+     */
+    strongTextSimilarity: 0.92,
+    visualWithStrongText: 0.64,
+    requiredStrongIdentifiers: 2,
 
     mediumTextSimilarity: 0.82,
-    visualWithMediumText: 0.90,
-
-    requiredCommonIdentifiers: 3,
-    visualWithIdentifiers: 0.78
+    visualWithMediumText: 0.72,
+    requiredMediumIdentifiers: 3
   });
 
 
   /*
-   * Alle Buchstaben müssen für die OCR erlaubt sein.
+   * Alle Buchstaben müssen zugelassen sein.
    *
-   * Würde nur D erlaubt, könnte Tesseract ein A
-   * fälschlicherweise als D ausgeben.
+   * Andernfalls könnte Tesseract beispielsweise
+   * ein A zwangsweise als D ausgeben.
    */
   const CODE_OCR_PARAMETERS = Object.freeze({
     tessedit_char_whitelist:
@@ -37,48 +47,48 @@
 
     preserve_interword_spaces: "1",
 
-    user_defined_dpi: "300"
+    user_defined_dpi: "220"
   });
 
 
   const GENERIC_WORDS = new Set([
+    "AG",
     "BATCH",
     "BATCHNO",
     "CHARGE",
     "CHARGENNUMMER",
-    "LOT",
-    "LOTNO",
-    "NUMBER",
-    "NUMMER",
-    "PRODUCT",
-    "PRODUKT",
-    "WEIGHT",
-    "GEWICHT",
-    "GROSS",
-    "NET",
+    "CO",
     "DATE",
     "DATUM",
     "DELIVERY",
-    "NOTE",
+    "DELIVERYNOTE",
+    "ETIKETT",
+    "GEWICHT",
+    "GROSS",
+    "HENKEL",
+    "KG",
+    "LABEL",
     "LIEFERSCHEIN",
+    "LOT",
+    "LOTNO",
     "MADE",
     "MATERIAL",
-    "LABEL",
-    "ETIKETT",
-    "QUANTITY",
     "MENGE",
-    "HENKEL",
+    "NET",
+    "NOTE",
+    "NUMBER",
+    "NUMMER",
     "PACKING",
-    "DELIVERYNOTE",
-    "KG",
-    "AG",
-    "CO"
+    "PRODUCT",
+    "PRODUKT",
+    "QUANTITY",
+    "WEIGHT"
   ]);
 
 
   /*
    * =========================================================
-   * ALLGEMEINE EINGABEN AUSWERTEN
+   * ALLGEMEINE HILFSFUNKTIONEN
    * =========================================================
    */
 
@@ -87,11 +97,9 @@
       return "";
     }
 
-
     if (typeof value === "string") {
       return value;
     }
-
 
     if (Array.isArray(value)) {
       return value
@@ -102,7 +110,6 @@
         .join("\n");
     }
 
-
     if (typeof value === "object") {
       if (
         typeof value.text === "string"
@@ -110,13 +117,11 @@
         return value.text;
       }
 
-
       if (
         typeof value.rawText === "string"
       ) {
         return value.rawText;
       }
-
 
       if (
         typeof value.ocrText === "string"
@@ -124,13 +129,11 @@
         return value.ocrText;
       }
 
-
       if (
         typeof value.identityText === "string"
       ) {
         return value.identityText;
       }
-
 
       if (
         value.data &&
@@ -139,7 +142,6 @@
         return value.data.text;
       }
 
-
       if (
         Array.isArray(value.passes)
       ) {
@@ -147,7 +149,6 @@
           value.passes
         );
       }
-
 
       if (
         Array.isArray(value.results)
@@ -158,54 +159,78 @@
       }
     }
 
-
     return String(value);
   }
 
 
   function isCanvasLike(value) {
-    if (!value) {
-      return false;
-    }
-
-
-    if (
-      typeof HTMLCanvasElement !==
-        "undefined" &&
-      value instanceof HTMLCanvasElement
-    ) {
-      return true;
-    }
-
-
-    if (
-      typeof OffscreenCanvas !==
-        "undefined" &&
-      value instanceof OffscreenCanvas
-    ) {
-      return true;
-    }
-
-
-    return (
-      typeof value.getContext ===
-        "function" &&
+    return Boolean(
+      value &&
+      typeof value.getContext === "function" &&
       Number(value.width) > 0 &&
       Number(value.height) > 0
     );
   }
 
 
+  function isBlobLike(value) {
+    return Boolean(
+      value &&
+      typeof value.arrayBuffer === "function" &&
+      Number.isFinite(
+        Number(value.size)
+      )
+    );
+  }
+
+
+  function extractCanvas(input) {
+    if (isCanvasLike(input)) {
+      return input;
+    }
+
+    if (
+      input &&
+      typeof input === "object"
+    ) {
+      const candidates = [
+        input.canvas,
+        input.sourceCanvas,
+        input.preparedCanvas,
+        input.ocrCanvas,
+        input.imageCanvas
+      ];
+
+      for (
+        const candidate
+        of candidates
+      ) {
+        if (
+          isCanvasLike(candidate)
+        ) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
+  }
+
+
   /*
    * =========================================================
-   * D-NUMMERN-ERKENNUNG
+   * D-NUMMERN
    * =========================================================
    *
-   * Regel:
+   * Die Regel lautet:
    *
-   * D muss direkt von mindestens einer Ziffer gefolgt werden.
-   * Die D-Nummer endet beim nächsten Leerzeichen,
+   * D muss unmittelbar von mindestens einer Ziffer
+   * gefolgt werden.
+   *
+   * Die Zahlenfolge endet beim nächsten Leerzeichen,
    * Tab oder Zeilenumbruch.
+   *
+   * Verschiedene OCR-Blöcke werden niemals verbunden.
    *
    * Gültig:
    *
@@ -223,42 +248,23 @@
    */
 
   function extractStrictDCodes(value) {
-    const text =
+    const tokens =
       normalizeTextInput(value)
         .toUpperCase()
-        .replace(/\r/g, "");
-
-
-    /*
-     * Der Text wird ausschließlich an echten
-     * Leerzeichen, Tabs und Zeilenumbrüchen getrennt.
-     *
-     * Verschiedene Textblöcke werden niemals verbunden.
-     */
-    const tokens =
-      text
+        .replace(/\r/g, "")
         .split(/\s+/)
         .filter(Boolean);
-
 
     const results =
       new Set();
 
-
-    for (const rawToken of tokens) {
+    for (const token of tokens) {
       /*
-       * Nur Satzzeichen am Anfang und Ende entfernen.
+       * Der vollständige OCR-Block muss passen.
        *
-       * Innerhalb des Tokens werden keine Zeichen entfernt.
-       * D123-456 bleibt deshalb ungültig.
+       * Es werden weder Buchstaben ersetzt noch
+       * benachbarte Zahlen angehängt.
        */
-      const token =
-        rawToken.replace(
-          /^[,;:()[\]{}"'!?]+|[,;:()[\]{}"'!?]+$/g,
-          ""
-        );
-
-
       if (
         /^D[0-9]+$/.test(token)
       ) {
@@ -266,17 +272,15 @@
       }
     }
 
-
     return [...results];
   }
 
 
   function normalizeManualCode(value) {
     /*
-     * Fehler werden nicht automatisch korrigiert.
+     * Fehler werden nicht automatisch entfernt.
      *
-     * D 123 bleibt D 123 und wird anschließend
-     * als ungültig bewertet.
+     * D 123 bleibt D 123 und ist ungültig.
      */
     return String(value || "")
       .toUpperCase()
@@ -298,7 +302,9 @@
   }
 
 
-  async function configureCodeWorker(worker) {
+  async function configureCodeWorker(
+    worker
+  ) {
     if (
       !worker ||
       typeof worker.setParameters !==
@@ -309,7 +315,6 @@
       );
     }
 
-
     await worker.setParameters(
       getCodeOcrParameters()
     );
@@ -318,66 +323,12 @@
 
   /*
    * =========================================================
-   * DATEI-PRÜFSUMME
-   * =========================================================
-   */
-
-  async function calculateFileDigest(file) {
-    if (!file) {
-      return null;
-    }
-
-
-    if (
-      window.crypto &&
-      window.crypto.subtle &&
-      typeof file.arrayBuffer ===
-        "function"
-    ) {
-      const buffer =
-        await file.arrayBuffer();
-
-
-      const digest =
-        await window.crypto.subtle.digest(
-          "SHA-256",
-          buffer
-        );
-
-
-      return Array.from(
-        new Uint8Array(digest)
-      )
-        .map(byte =>
-          byte
-            .toString(16)
-            .padStart(2, "0")
-        )
-        .join("");
-    }
-
-
-    /*
-     * Fallback für ältere Browser.
-     */
-    return [
-      file.name || "",
-      file.size || "",
-      file.lastModified || "",
-      file.type || ""
-    ].join("|");
-  }
-
-
-  /*
-   * =========================================================
-   * DATEI IN CANVAS LADEN
+   * BILD LADEN
    * =========================================================
    */
 
   async function createCanvasFromFile(
-    file,
-    maximumSide = 2600
+    file
   ) {
     if (!file) {
       throw new Error(
@@ -385,9 +336,7 @@
       );
     }
 
-
     let image = null;
-
 
     if (
       typeof createImageBitmap ===
@@ -410,72 +359,39 @@
       }
     }
 
-
     if (!image) {
       image =
         await loadImageElement(file);
     }
 
-
-    const originalWidth =
+    const width =
       Number(
         image.width ||
         image.naturalWidth
       );
 
-
-    const originalHeight =
+    const height =
       Number(
         image.height ||
         image.naturalHeight
       );
 
-
     if (
-      !originalWidth ||
-      !originalHeight
+      !width ||
+      !height
     ) {
       throw new Error(
         "Die Bildgröße konnte nicht ermittelt werden."
       );
     }
 
-
-    const scale =
-      Math.min(
-        1,
-
-        maximumSide /
-        Math.max(
-          originalWidth,
-          originalHeight
-        )
-      );
-
-
     const canvas =
       document.createElement(
         "canvas"
       );
 
-
-    canvas.width =
-      Math.max(
-        1,
-        Math.round(
-          originalWidth * scale
-        )
-      );
-
-
-    canvas.height =
-      Math.max(
-        1,
-        Math.round(
-          originalHeight * scale
-        )
-      );
-
+    canvas.width = width;
+    canvas.height = height;
 
     const context =
       canvas.getContext(
@@ -485,22 +401,19 @@
         }
       );
 
-
     if (!context) {
       throw new Error(
-        "Der Bildbereich konnte nicht erstellt werden."
+        "Das Foto konnte nicht vorbereitet werden."
       );
     }
-
 
     context.drawImage(
       image,
       0,
       0,
-      canvas.width,
-      canvas.height
+      width,
+      height
     );
-
 
     if (
       typeof image.close ===
@@ -508,7 +421,6 @@
     ) {
       image.close();
     }
-
 
     return canvas;
   }
@@ -520,16 +432,13 @@
         const image =
           new Image();
 
-
         const url =
           URL.createObjectURL(file);
-
 
         image.onload = () => {
           URL.revokeObjectURL(url);
           resolve(image);
         };
-
 
         image.onerror = () => {
           URL.revokeObjectURL(url);
@@ -541,7 +450,6 @@
           );
         };
 
-
         image.src = url;
       }
     );
@@ -550,350 +458,90 @@
 
   /*
    * =========================================================
-   * OCR-TEXTSIGNATUR
+   * QUERFORMAT UND BILDGRÖSSE
    * =========================================================
    */
 
-  function createIdentitySignature(value) {
-    const text =
-      normalizeTextInput(value)
-        .toUpperCase()
-        .replace(/\r/g, " ");
+  function isLandscape(input) {
+    const canvas =
+      extractCanvas(input);
 
+    if (!canvas) {
+      return false;
+    }
 
-    const rawTokens =
-      text
-        .split(/\s+/)
-        .map(token =>
-          token.replace(
-            /^[^A-Z0-9]+|[^A-Z0-9]+$/g,
-            ""
-          )
-        )
-        .filter(Boolean);
-
-
-    /*
-     * D-Nummern werden beim Doppel-Scan-Vergleich
-     * nicht berücksichtigt.
-     *
-     * Zwei zusammengehörende Etiketten sollen gerade
-     * dieselbe D-Nummer besitzen.
-     */
-    const tokens =
-      [
-        ...new Set(
-          rawTokens
-            .filter(token =>
-              !/^D[0-9]+$/.test(token)
-            )
-            .filter(token =>
-              token.length >= 3 ||
-              /^[0-9]{4,}$/.test(token)
-            )
-        )
-      ];
-
-
-    const strongTokens =
-      tokens.filter(token => {
-        if (
-          GENERIC_WORDS.has(token)
-        ) {
-          return false;
-        }
-
-
-        return (
-          /^[0-9]{5,}$/.test(token) ||
-          (
-            token.length >= 5 &&
-            /[A-Z]/.test(token) &&
-            /[0-9]/.test(token)
-          )
-        );
-      });
-
-
-    return {
-      tokens,
-      strongTokens,
-      tokenCount:
-        tokens.length
-    };
+    return (
+      Number(canvas.width) >=
+      Number(canvas.height)
+    );
   }
 
 
-  function compareIdentitySignatures(
-    first,
-    second
+  function normalizeLandscapeCanvas(
+    input
   ) {
-    const firstTokens =
-      new Set(
-        first?.tokens || []
-      );
-
-
-    const secondTokens =
-      new Set(
-        second?.tokens || []
-      );
-
-
-    if (
-      firstTokens.size < 3 ||
-      secondTokens.size < 3
-    ) {
-      return {
-        available: false,
-        similarity: 0,
-        commonStrong: 0,
-        commonTokens: []
-      };
-    }
-
-
-    const union =
-      new Set([
-        ...firstTokens,
-        ...secondTokens
-      ]);
-
-
-    let unionWeight = 0;
-    let commonWeight = 0;
-
-
-    const commonTokens = [];
-
-
-    for (const token of union) {
-      const weight =
-        getTokenWeight(token);
-
-
-      unionWeight += weight;
-
-
-      if (
-        firstTokens.has(token) &&
-        secondTokens.has(token)
-      ) {
-        commonWeight += weight;
-        commonTokens.push(token);
-      }
-    }
-
-
-    const secondStrong =
-      new Set(
-        second?.strongTokens || []
-      );
-
-
-    const commonStrong =
-      (
-        first?.strongTokens || []
-      )
-        .filter(token =>
-          secondStrong.has(token)
-        )
-        .length;
-
-
-    return {
-      available: true,
-
-      similarity:
-        commonWeight /
-        Math.max(
-          1,
-          unionWeight
-        ),
-
-      commonStrong,
-      commonTokens
-    };
-  }
-
-
-  function getTokenWeight(token) {
-    if (
-      GENERIC_WORDS.has(token)
-    ) {
-      return 0.2;
-    }
-
-
-    if (
-      /^[0-9]{5,}$/.test(token)
-    ) {
-      return 4;
-    }
-
-
-    if (
-      token.length >= 5 &&
-      /[A-Z]/.test(token) &&
-      /[0-9]/.test(token)
-    ) {
-      return 3;
-    }
-
-
-    if (token.length >= 7) {
-      return 1.5;
-    }
-
-
-    return 1;
-  }
-
-
-  /*
-   * =========================================================
-   * VISUELLE BILDSIGNATUR
-   * =========================================================
-   */
-
-  function createVisualSignature(input) {
     const sourceCanvas =
       extractCanvas(input);
 
-
     if (!sourceCanvas) {
-      return null;
+      throw new Error(
+        "Kein gültiger Bildbereich vorhanden."
+      );
     }
 
+    const originalWidth =
+      Number(
+        sourceCanvas.width
+      );
 
-    const width =
-      Number(sourceCanvas.width);
-
-
-    const height =
-      Number(sourceCanvas.height);
-
-
-    if (!width || !height) {
-      return null;
-    }
-
-
-    const regions = [
-      {
-        name: "full",
-        weight: 0.42,
-
-        x: 0,
-        y: 0,
-        width,
-        height
-      },
-
-      {
-        name: "center",
-        weight: 0.34,
-
-        x: width * 0.08,
-        y: height * 0.08,
-
-        width: width * 0.84,
-        height: height * 0.84
-      },
-
-      {
-        name: "top",
-        weight: 0.12,
-
-        x: 0,
-        y: 0,
-        width,
-
-        height:
-          height * 0.58
-      },
-
-      {
-        name: "bottom",
-        weight: 0.12,
-
-        x: 0,
-        y: height * 0.42,
-        width,
-
-        height:
-          height * 0.58
-      }
-    ];
-
-
-    return regions.map(region => ({
-      name:
-        region.name,
-
-      weight:
-        region.weight,
-
-      fingerprint:
-        createRegionFingerprint(
-          sourceCanvas,
-          region
-        )
-    }));
-  }
-
-
-  function extractCanvas(input) {
-    if (isCanvasLike(input)) {
-      return input;
-    }
-
+    const originalHeight =
+      Number(
+        sourceCanvas.height
+      );
 
     if (
-      input &&
-      typeof input === "object"
+      SETTINGS.requireLandscape &&
+      originalHeight > originalWidth
     ) {
-      const candidates = [
-        input.canvas,
-        input.sourceCanvas,
-        input.imageCanvas,
-        input.preparedCanvas
-      ];
-
-
-      for (
-        const candidate
-        of candidates
-      ) {
-        if (
-          isCanvasLike(candidate)
-        ) {
-          return candidate;
-        }
-      }
+      throw new Error(
+        "Bitte das Handy quer halten und das Etikett erneut fotografieren."
+      );
     }
 
+    const scale =
+      Math.min(
+        1,
 
-    return null;
-  }
+        SETTINGS.maximumWidth /
+        originalWidth,
 
+        SETTINGS.maximumHeight /
+        originalHeight
+      );
 
-  function createRegionFingerprint(
-    sourceCanvas,
-    region
-  ) {
-    const size = 32;
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          originalWidth * scale
+        )
+      );
 
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          originalHeight * scale
+        )
+      );
 
     const canvas =
       document.createElement(
         "canvas"
       );
 
-
-    canvas.width = size;
-    canvas.height = size;
-
+    canvas.width = width;
+    canvas.height = height;
 
     const context =
       canvas.getContext(
@@ -903,14 +551,221 @@
         }
       );
 
+    if (!context) {
+      throw new Error(
+        "Das Foto konnte nicht skaliert werden."
+      );
+    }
 
     context.imageSmoothingEnabled =
       true;
 
-
     context.imageSmoothingQuality =
       "high";
 
+    context.drawImage(
+      sourceCanvas,
+
+      0,
+      0,
+      originalWidth,
+      originalHeight,
+
+      0,
+      0,
+      width,
+      height
+    );
+
+    return canvas;
+  }
+
+
+  /*
+   * =========================================================
+   * DATEI-PRÜFSUMME
+   * =========================================================
+   */
+
+  async function calculateFileDigest(
+    file
+  ) {
+    if (!file) {
+      return null;
+    }
+
+    if (
+      window.crypto &&
+      window.crypto.subtle &&
+      typeof file.arrayBuffer ===
+        "function"
+    ) {
+      const buffer =
+        await file.arrayBuffer();
+
+      const digest =
+        await window.crypto.subtle.digest(
+          "SHA-256",
+          buffer
+        );
+
+      return Array.from(
+        new Uint8Array(digest)
+      )
+        .map(byte =>
+          byte
+            .toString(16)
+            .padStart(2, "0")
+        )
+        .join("");
+    }
+
+    return [
+      file.name || "",
+      file.size || "",
+      file.lastModified || "",
+      file.type || ""
+    ].join("|");
+  }
+
+
+  /*
+   * =========================================================
+   * SCHNELLE OCR-DURCHLÄUFE
+   * =========================================================
+   *
+   * Es werden nur drei Durchläufe verwendet:
+   *
+   * 1. Gesamtbild
+   * 2. linke 62 Prozent
+   * 3. rechte 62 Prozent
+   *
+   * Dadurch wird das gesamte Etikett abgedeckt,
+   * ohne viele überlappende Bereiche zu prüfen.
+   */
+
+  function createRecognitionPasses(
+    inputCanvas
+  ) {
+    const sourceCanvas =
+      normalizeLandscapeCanvas(
+        inputCanvas
+      );
+
+    const width =
+      sourceCanvas.width;
+
+    const height =
+      sourceCanvas.height;
+
+    return [
+      {
+        name:
+          "Gesamtbild",
+
+        canvas:
+          createFastOcrCrop(
+            sourceCanvas,
+            {
+              x: 0,
+              y: 0,
+              width,
+              height
+            },
+            1400
+          )
+      },
+
+      {
+        name:
+          "Linker Bereich",
+
+        canvas:
+          createFastOcrCrop(
+            sourceCanvas,
+            {
+              x: 0,
+              y: 0,
+              width:
+                width * 0.62,
+              height
+            },
+            1100
+          )
+      },
+
+      {
+        name:
+          "Rechter Bereich",
+
+        canvas:
+          createFastOcrCrop(
+            sourceCanvas,
+            {
+              x:
+                width * 0.38,
+              y: 0,
+              width:
+                width * 0.62,
+              height
+            },
+            1100
+          )
+      }
+    ];
+  }
+
+
+  function createFastOcrCrop(
+    sourceCanvas,
+    region,
+    maximumWidth
+  ) {
+    const scale =
+      Math.min(
+        1,
+
+        maximumWidth /
+        region.width
+      );
+
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          region.width * scale
+        )
+      );
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          region.height * scale
+        )
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
+
+    context.imageSmoothingEnabled =
+      true;
+
+    context.imageSmoothingQuality =
+      "high";
 
     context.drawImage(
       sourceCanvas,
@@ -922,78 +777,238 @@
 
       0,
       0,
-      size,
-      size
+      width,
+      height
     );
 
-
+    /*
+     * Leichte Graustufen- und Kontrastanpassung.
+     * Keine harte Schwarz-Weiß-Umwandlung.
+     */
     const imageData =
       context.getImageData(
         0,
         0,
-        size,
-        size
-      ).data;
+        width,
+        height
+      );
 
-
-    const grayscale = [];
-
+    const data =
+      imageData.data;
 
     for (
       let index = 0;
-      index < imageData.length;
+      index < data.length;
       index += 4
     ) {
-      grayscale.push(
-        imageData[index] * 0.299 +
-        imageData[index + 1] * 0.587 +
-        imageData[index + 2] * 0.114
+      let gray =
+        data[index] * 0.299 +
+        data[index + 1] * 0.587 +
+        data[index + 2] * 0.114;
+
+      gray =
+        (
+          gray - 128
+        ) * 1.15 + 128;
+
+      gray =
+        Math.max(
+          0,
+          Math.min(
+            255,
+            gray
+          )
+        );
+
+      data[index] = gray;
+      data[index + 1] = gray;
+      data[index + 2] = gray;
+    }
+
+    context.putImageData(
+      imageData,
+      0,
+      0
+    );
+
+    return canvas;
+  }
+
+
+  /*
+   * =========================================================
+   * SCHNELLE BILDSIGNATUR
+   * =========================================================
+   */
+
+  function createVisualSignature(
+    input
+  ) {
+    const canvas =
+      extractCanvas(input);
+
+    if (!canvas) {
+      return null;
+    }
+
+    const width =
+      Number(canvas.width);
+
+    const height =
+      Number(canvas.height);
+
+    const regions = [
+      {
+        name: "full",
+        weight: 0.62,
+
+        x: 0,
+        y: 0,
+        width,
+        height
+      },
+
+      {
+        name: "center",
+        weight: 0.38,
+
+        x:
+          width * 0.08,
+
+        y:
+          height * 0.08,
+
+        width:
+          width * 0.84,
+
+        height:
+          height * 0.84
+      }
+    ];
+
+    return regions.map(
+      region => ({
+        name:
+          region.name,
+
+        weight:
+          region.weight,
+
+        fingerprint:
+          createRegionFingerprint(
+            canvas,
+            region
+          )
+      })
+    );
+  }
+
+
+  function createRegionFingerprint(
+    canvas,
+    region
+  ) {
+    /*
+     * Sehr kleine Vergleichsauflösung.
+     * Das hält die Prüfung schnell.
+     */
+    const width = 48;
+    const height = 27;
+
+    const sample =
+      document.createElement(
+        "canvas"
+      );
+
+    sample.width = width;
+    sample.height = height;
+
+    const context =
+      sample.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
+
+    context.drawImage(
+      canvas,
+
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+
+      0,
+      0,
+      width,
+      height
+    );
+
+    const pixels =
+      context.getImageData(
+        0,
+        0,
+        width,
+        height
+      ).data;
+
+    const gray = [];
+
+    for (
+      let index = 0;
+      index < pixels.length;
+      index += 4
+    ) {
+      gray.push(
+        pixels[index] * 0.299 +
+        pixels[index + 1] * 0.587 +
+        pixels[index + 2] * 0.114
       );
     }
 
-
     const low =
       percentileValue(
-        grayscale,
+        gray,
         5
       );
-
 
     const high =
       Math.max(
         low + 20,
 
         percentileValue(
-          grayscale,
+          gray,
           95
         )
       );
 
-
-    const normalizedGray =
-      grayscale.map(value =>
+    const normalized =
+      gray.map(value =>
         Math.max(
           0,
 
           Math.min(
             1,
 
-            (value - low) /
-            (high - low)
+            (
+              value - low
+            ) /
+            (
+              high - low
+            )
           )
         )
       );
 
-
     const median =
       percentileValue(
-        normalizedGray,
+        normalized,
         50
       );
 
-
     const averageHash =
-      normalizedGray
+      normalized
         .map(value =>
           value >= median
             ? "1"
@@ -1001,31 +1016,27 @@
         )
         .join("");
 
-
     let differenceHash = "";
-
 
     for (
       let y = 0;
-      y < size;
+      y < height;
       y += 1
     ) {
       for (
         let x = 0;
-        x < size - 1;
+        x < width - 1;
         x += 1
       ) {
         const left =
-          normalizedGray[
-            y * size + x
+          normalized[
+            y * width + x
           ];
-
 
         const right =
-          normalizedGray[
-            y * size + x + 1
+          normalized[
+            y * width + x + 1
           ];
-
 
         differenceHash +=
           left > right
@@ -1034,107 +1045,36 @@
       }
     }
 
-
-    const edges =
-      new Array(
-        size * size
-      ).fill(0);
-
-
-    for (
-      let y = 1;
-      y < size - 1;
-      y += 1
-    ) {
-      for (
-        let x = 1;
-        x < size - 1;
-        x += 1
-      ) {
-        const index =
-          y * size + x;
-
-
-        const horizontal =
-          normalizedGray[
-            index + 1
-          ] -
-          normalizedGray[
-            index - 1
-          ];
-
-
-        const vertical =
-          normalizedGray[
-            index + size
-          ] -
-          normalizedGray[
-            index - size
-          ];
-
-
-        edges[index] =
-          Math.hypot(
-            horizontal,
-            vertical
-          );
-      }
-    }
-
-
-    const edgeThreshold =
-      percentileValue(
-        edges,
-        68
-      );
-
-
-    const edgeHash =
-      edges
-        .map(value =>
-          value >= edgeThreshold
-            ? "1"
-            : "0"
-        )
-        .join("");
-
-
     const histogram =
-      new Array(16).fill(0);
-
+      new Array(12).fill(0);
 
     for (
       const value
-      of normalizedGray
+      of normalized
     ) {
       const bin =
         Math.min(
-          15,
+          11,
 
           Math.floor(
-            value * 16
+            value * 12
           )
         );
-
 
       histogram[bin] += 1;
     }
 
-
     return {
-      size,
-
-      grayscale:
-        normalizedGray,
-
+      width,
+      height,
+      normalized,
       averageHash,
       differenceHash,
-      edgeHash,
 
       histogram:
         histogram.map(value =>
           value /
-          normalizedGray.length
+          normalized.length
         )
     };
   }
@@ -1149,12 +1089,10 @@
         firstInput
       );
 
-
     const second =
       extractVisualSignature(
         secondInput
       );
-
 
     if (
       !Array.isArray(first) ||
@@ -1164,46 +1102,33 @@
       return 0;
     }
 
-
-    let weightedScore = 0;
+    let score = 0;
     let totalWeight = 0;
-
 
     for (
       let index = 0;
       index < first.length;
       index += 1
     ) {
-      const firstRegion =
-        first[index];
-
-
-      const secondRegion =
-        second[index];
-
-
       const weight =
         Number(
-          firstRegion?.weight || 0
+          first[index]?.weight || 0
         );
-
 
       const similarity =
         compareRegionFingerprints(
-          firstRegion?.fingerprint,
-          secondRegion?.fingerprint
+          first[index]?.fingerprint,
+          second[index]?.fingerprint
         );
 
-
-      weightedScore +=
+      score +=
         similarity * weight;
 
-
-      totalWeight += weight;
+      totalWeight +=
+        weight;
     }
 
-
-    return weightedScore /
+    return score /
       Math.max(
         0.0001,
         totalWeight
@@ -1211,11 +1136,14 @@
   }
 
 
-  function extractVisualSignature(input) {
-    if (Array.isArray(input)) {
+  function extractVisualSignature(
+    input
+  ) {
+    if (
+      Array.isArray(input)
+    ) {
       return input;
     }
-
 
     if (
       input &&
@@ -1230,7 +1158,6 @@
       );
     }
 
-
     return null;
   }
 
@@ -1239,40 +1166,32 @@
     first,
     second
   ) {
-    if (!first || !second) {
+    if (
+      !first ||
+      !second
+    ) {
       return 0;
     }
 
-
-    const grayscaleSimilarity =
-      bestShiftedGrayscaleSimilarity(
-        first.grayscale,
-        second.grayscale,
-        first.size,
-        2
+    const pixelSimilarity =
+      bestShiftedPixelSimilarity(
+        first.normalized,
+        second.normalized,
+        first.width,
+        first.height
       );
 
-
-    const averageHashSimilarity =
+    const averageSimilarity =
       hashSimilarity(
         first.averageHash,
         second.averageHash
       );
 
-
-    const differenceHashSimilarity =
+    const differenceSimilarity =
       hashSimilarity(
         first.differenceHash,
         second.differenceHash
       );
-
-
-    const edgeHashSimilarity =
-      hashSimilarity(
-        first.edgeHash,
-        second.edgeHash
-      );
-
 
     const histogramSimilarity =
       histogramIntersection(
@@ -1280,126 +1199,115 @@
         second.histogram
       );
 
-
     return (
-      grayscaleSimilarity * 0.42 +
-      averageHashSimilarity * 0.13 +
-      differenceHashSimilarity * 0.14 +
-      edgeHashSimilarity * 0.21 +
+      pixelSimilarity * 0.48 +
+      averageSimilarity * 0.18 +
+      differenceSimilarity * 0.24 +
       histogramSimilarity * 0.10
     );
   }
 
 
-  function bestShiftedGrayscaleSimilarity(
+  function bestShiftedPixelSimilarity(
     first,
     second,
-    size,
-    maximumShift
+    width,
+    height
   ) {
     if (
       !Array.isArray(first) ||
       !Array.isArray(second) ||
-      first.length !== size * size ||
-      second.length !== size * size
+      first.length !==
+        width * height ||
+      second.length !==
+        width * height
     ) {
       return 0;
     }
 
-
     let best = 0;
 
-
+    /*
+     * Nur Verschiebungen von einem Pixel prüfen.
+     */
     for (
-      let shiftY = -maximumShift;
-      shiftY <= maximumShift;
+      let shiftY = -1;
+      shiftY <= 1;
       shiftY += 1
     ) {
       for (
-        let shiftX = -maximumShift;
-        shiftX <= maximumShift;
+        let shiftX = -1;
+        shiftX <= 1;
         shiftX += 1
       ) {
         let difference = 0;
         let count = 0;
 
-
         for (
           let y = 0;
-          y < size;
+          y < height;
           y += 1
         ) {
           const otherY =
             y + shiftY;
 
-
           if (
             otherY < 0 ||
-            otherY >= size
+            otherY >= height
           ) {
             continue;
           }
 
-
           for (
             let x = 0;
-            x < size;
+            x < width;
             x += 1
           ) {
             const otherX =
               x + shiftX;
 
-
             if (
               otherX < 0 ||
-              otherX >= size
+              otherX >= width
             ) {
               continue;
             }
 
-
             difference +=
               Math.abs(
                 first[
-                  y * size + x
+                  y * width + x
                 ] -
                 second[
-                  otherY * size +
+                  otherY * width +
                   otherX
                 ]
               );
-
 
             count += 1;
           }
         }
 
+        if (count) {
+          best =
+            Math.max(
+              best,
 
-        if (!count) {
-          continue;
+              1 -
+              difference /
+              count
+            );
         }
-
-
-        const similarity =
-          Math.max(
-            0,
-
-            1 -
-            difference /
-            count
-          );
-
-
-        best =
-          Math.max(
-            best,
-            similarity
-          );
       }
     }
 
-
-    return best;
+    return Math.max(
+      0,
+      Math.min(
+        1,
+        best
+      )
+    );
   }
 
 
@@ -1415,9 +1323,7 @@
       return 0;
     }
 
-
     let equal = 0;
-
 
     for (
       let index = 0;
@@ -1431,7 +1337,6 @@
         equal += 1;
       }
     }
-
 
     return equal /
       first.length;
@@ -1450,9 +1355,7 @@
       return 0;
     }
 
-
     let intersection = 0;
-
 
     for (
       let index = 0;
@@ -1466,10 +1369,8 @@
         );
     }
 
-
     return Math.max(
       0,
-
       Math.min(
         1,
         intersection
@@ -1480,36 +1381,253 @@
 
   /*
    * =========================================================
-   * PREPARE SCAN
+   * OCR-TEXTSIGNATUR
    * =========================================================
-   *
-   * Unterstützte Aufrufe:
-   *
-   * await prepareScan(file, canvas)
-   *
-   * await prepareScan(canvas, file)
-   *
-   * await prepareScan({
-   *   file,
-   *   canvas,
-   *   identityText
-   * })
-   *
-   * await prepareScan(canvas)
+   */
+
+  function createIdentitySignature(
+    value
+  ) {
+    const rawTokens =
+      normalizeTextInput(value)
+        .toUpperCase()
+        .replace(/\r/g, " ")
+        .split(/\s+/)
+        .map(token =>
+          token.replace(
+            /^[^A-Z0-9]+|[^A-Z0-9]+$/g,
+            ""
+          )
+        )
+        .filter(Boolean);
+
+    const tokens = [
+      ...new Set(
+        rawTokens
+          /*
+           * Die D-Nummer ist kein Beweis
+           * für einen Doppel-Scan.
+           */
+          .filter(token =>
+            !/^D[0-9]+$/.test(token)
+          )
+          .filter(token =>
+            token.length >= 3 ||
+            /^[0-9]{4,}$/.test(token)
+          )
+      )
+    ];
+
+    const strongTokens =
+      tokens.filter(token => {
+        if (
+          GENERIC_WORDS.has(token)
+        ) {
+          return false;
+        }
+
+        return (
+          /^[0-9]{5,}$/.test(token) ||
+          (
+            token.length >= 5 &&
+            /[A-Z]/.test(token) &&
+            /[0-9]/.test(token)
+          )
+        );
+      });
+
+    return {
+      tokens,
+      strongTokens,
+
+      tokenCount:
+        tokens.length
+    };
+  }
+
+
+  function compareIdentitySignatures(
+    firstInput,
+    secondInput
+  ) {
+    const first =
+      extractIdentitySignature(
+        firstInput
+      );
+
+    const second =
+      extractIdentitySignature(
+        secondInput
+      );
+
+    const firstTokens =
+      new Set(
+        first.tokens || []
+      );
+
+    const secondTokens =
+      new Set(
+        second.tokens || []
+      );
+
+    if (
+      firstTokens.size < 3 ||
+      secondTokens.size < 3
+    ) {
+      return {
+        available: false,
+        similarity: 0,
+        commonStrong: 0,
+        commonTokens: []
+      };
+    }
+
+    const union =
+      new Set([
+        ...firstTokens,
+        ...secondTokens
+      ]);
+
+    let unionWeight = 0;
+    let commonWeight = 0;
+
+    const commonTokens = [];
+
+    for (
+      const token
+      of union
+    ) {
+      const weight =
+        getTokenWeight(token);
+
+      unionWeight +=
+        weight;
+
+      if (
+        firstTokens.has(token) &&
+        secondTokens.has(token)
+      ) {
+        commonWeight +=
+          weight;
+
+        commonTokens.push(
+          token
+        );
+      }
+    }
+
+    const secondStrong =
+      new Set(
+        second.strongTokens || []
+      );
+
+    const commonStrong =
+      (
+        first.strongTokens || []
+      )
+        .filter(token =>
+          secondStrong.has(token)
+        )
+        .length;
+
+    return {
+      available: true,
+
+      similarity:
+        commonWeight /
+        Math.max(
+          1,
+          unionWeight
+        ),
+
+      commonStrong,
+      commonTokens
+    };
+  }
+
+
+  function extractIdentitySignature(
+    input
+  ) {
+    if (
+      input &&
+      Array.isArray(input.tokens)
+    ) {
+      return input;
+    }
+
+    if (
+      input &&
+      typeof input === "object"
+    ) {
+      if (
+        input.identitySignature
+      ) {
+        return input.identitySignature;
+      }
+
+      if (
+        input.textSignature
+      ) {
+        return input.textSignature;
+      }
+    }
+
+    return createIdentitySignature(
+      input || ""
+    );
+  }
+
+
+  function getTokenWeight(
+    token
+  ) {
+    if (
+      GENERIC_WORDS.has(token)
+    ) {
+      return 0.2;
+    }
+
+    if (
+      /^[0-9]{5,}$/.test(token)
+    ) {
+      return 4;
+    }
+
+    if (
+      token.length >= 5 &&
+      /[A-Z]/.test(token) &&
+      /[0-9]/.test(token)
+    ) {
+      return 3;
+    }
+
+    if (
+      token.length >= 7
+    ) {
+      return 1.5;
+    }
+
+    return 1;
+  }
+
+
+  /*
+   * =========================================================
+   * SCAN VORBEREITEN
+   * =========================================================
    */
 
   async function prepareScan(
     ...argumentsList
   ) {
     const options =
-      parsePrepareScanArguments(
+      parsePrepareArguments(
         argumentsList
       );
 
-
     let sourceCanvas =
       options.canvas;
-
 
     if (
       !sourceCanvas &&
@@ -1517,22 +1635,26 @@
     ) {
       sourceCanvas =
         await createCanvasFromFile(
-          options.file,
-          options.maximumSide
+          options.file
         );
     }
 
-
     if (!sourceCanvas) {
       throw new Error(
-        "Für prepareScan wurde kein Bildbereich übergeben."
+        "Für prepareScan wurde kein Foto übergeben."
       );
     }
 
+    /*
+     * Hochformat wird hier sofort abgelehnt.
+     */
+    const preparedCanvas =
+      normalizeLandscapeCanvas(
+        sourceCanvas
+      );
 
     const fileDigest =
       options.fileDigest ||
-      options.digest ||
       (
         options.file
           ? await calculateFileDigest(
@@ -1541,44 +1663,41 @@
           : null
       );
 
-
     const visualSignature =
       options.visualSignature ||
       createVisualSignature(
-        sourceCanvas
+        preparedCanvas
       );
-
 
     const identitySignature =
       options.identitySignature ||
       createIdentitySignature(
-        options.identityText ||
-        options.ocrText ||
-        options.text ||
-        ""
+        options.identityText
       );
 
-
-    /*
-     * Mehrere Eigenschaftsnamen werden angeboten,
-     * damit unterschiedliche index.html-Versionen
-     * dieselben Daten verwenden können.
-     */
     return {
       version:
         VERSION,
+
+      orientation:
+        "landscape",
+
+      orientationValid:
+        true,
 
       file:
         options.file || null,
 
       canvas:
-        sourceCanvas,
+        preparedCanvas,
 
-      sourceCanvas,
+      sourceCanvas:
+        preparedCanvas,
 
-      preparedCanvas:
-        sourceCanvas,
+      preparedCanvas,
 
+      ocrCanvas:
+        preparedCanvas,
 
       fileDigest,
 
@@ -1591,7 +1710,6 @@
       fileHash:
         fileDigest,
 
-
       visualSignature,
 
       imageSignature:
@@ -1603,19 +1721,13 @@
       fingerprint:
         visualSignature,
 
+      identityText:
+        options.identityText,
 
       identitySignature,
 
       textSignature:
         identitySignature,
-
-
-      identityText:
-        options.identityText ||
-        options.ocrText ||
-        options.text ||
-        "",
-
 
       preparedAt:
         Date.now()
@@ -1623,7 +1735,7 @@
   }
 
 
-  function parsePrepareScanArguments(
+  function parsePrepareArguments(
     argumentsList
   ) {
     const options = {
@@ -1632,24 +1744,21 @@
       identityText: "",
       identitySignature: null,
       visualSignature: null,
-      fileDigest: null,
-      maximumSide: 2600
+      fileDigest: null
     };
-
 
     for (
       const argument
       of argumentsList
     ) {
-      if (argument == null) {
+      if (
+        argument == null
+      ) {
         continue;
       }
 
-
       if (
-        typeof Blob !==
-          "undefined" &&
-        argument instanceof Blob
+        isBlobLike(argument)
       ) {
         options.file =
           argument;
@@ -1657,14 +1766,14 @@
         continue;
       }
 
-
-      if (isCanvasLike(argument)) {
+      if (
+        isCanvasLike(argument)
+      ) {
         options.canvas =
           argument;
 
         continue;
       }
-
 
       if (
         typeof argument ===
@@ -1676,134 +1785,62 @@
         continue;
       }
 
-
       if (
-        typeof argument ===
-        "number"
+        typeof argument !==
+        "object"
       ) {
         continue;
       }
 
-
       if (
-        typeof argument ===
-        "object"
+        isBlobLike(
+          argument.file
+        )
       ) {
-        if (
-          argument.file &&
-          typeof Blob !==
-            "undefined" &&
-          argument.file instanceof Blob
-        ) {
-          options.file =
-            argument.file;
-        }
-
-
-        const possibleCanvas =
-          extractCanvas(argument);
-
-
-        if (possibleCanvas) {
-          options.canvas =
-            possibleCanvas;
-        }
-
-
-        if (
-          typeof argument.identityText ===
-          "string"
-        ) {
-          options.identityText =
-            argument.identityText;
-        } else if (
-          typeof argument.ocrText ===
-          "string"
-        ) {
-          options.identityText =
-            argument.ocrText;
-        } else if (
-          typeof argument.text ===
-          "string"
-        ) {
-          options.identityText =
-            argument.text;
-        }
-
-
-        if (
-          argument.identitySignature
-        ) {
-          options.identitySignature =
-            argument.identitySignature;
-        } else if (
-          argument.textSignature
-        ) {
-          options.identitySignature =
-            argument.textSignature;
-        } else if (
-          Array.isArray(
-            argument.tokens
-          )
-        ) {
-          options.identitySignature =
-            argument;
-        }
-
-
-        if (
-          argument.visualSignature
-        ) {
-          options.visualSignature =
-            argument.visualSignature;
-        } else if (
-          argument.imageSignature
-        ) {
-          options.visualSignature =
-            argument.imageSignature;
-        } else if (
-          argument.fingerprint
-        ) {
-          options.visualSignature =
-            argument.fingerprint;
-        }
-
-
-        options.fileDigest =
-          argument.fileDigest ||
-          argument.digest ||
-          argument.sha256 ||
-          argument.fileHash ||
-          options.fileDigest;
-
-
-        if (
-          Number.isFinite(
-            argument.maximumSide
-          )
-        ) {
-          options.maximumSide =
-            Math.max(
-              256,
-              Number(
-                argument.maximumSide
-              )
-            );
-        }
+        options.file =
+          argument.file;
       }
-    }
 
+      const canvas =
+        extractCanvas(argument);
+
+      if (canvas) {
+        options.canvas =
+          canvas;
+      }
+
+      options.identityText =
+        argument.identityText ||
+        argument.ocrText ||
+        argument.text ||
+        options.identityText;
+
+      options.identitySignature =
+        argument.identitySignature ||
+        argument.textSignature ||
+        options.identitySignature;
+
+      options.visualSignature =
+        argument.visualSignature ||
+        argument.imageSignature ||
+        argument.photoSignature ||
+        argument.fingerprint ||
+        options.visualSignature;
+
+      options.fileDigest =
+        argument.fileDigest ||
+        argument.digest ||
+        argument.sha256 ||
+        argument.fileHash ||
+        options.fileDigest;
+    }
 
     return options;
   }
 
 
-  /*
-   * Fügt einem bereits vorbereiteten Scan
-   * später OCR-Text hinzu.
-   */
   function addIdentityToScan(
-    preparedScan,
+    scan,
     identityText
   ) {
     const identitySignature =
@@ -1811,9 +1848,8 @@
         identityText
       );
 
-
     return {
-      ...preparedScan,
+      ...scan,
 
       identityText,
 
@@ -1827,187 +1863,85 @@
 
   /*
    * =========================================================
-   * DOPPEL-SCAN-ENTSCHEIDUNG
+   * SCHNELLE VORPRÜFUNG
    * =========================================================
+   *
+   * Diese Funktion behebt:
+   *
+   * window.DuplicateFix.precheck is not a function
    */
 
-  function evaluateDuplicate(
-    visualOrOptions,
-    identityComparison,
-    exactFileMatch = false
+  function precheck(
+    firstOrOptions,
+    secondArgument
   ) {
-    let visualSimilarity =
-      visualOrOptions;
-
-
-    let comparison =
-      identityComparison;
-
-
-    let exact =
-      exactFileMatch;
-
-
-    if (
-      visualOrOptions &&
-      typeof visualOrOptions ===
-        "object"
-    ) {
-      visualSimilarity =
-        visualOrOptions.visualSimilarity ??
-        visualOrOptions.visual ??
-        0;
-
-
-      comparison =
-        visualOrOptions.identityComparison ??
-        visualOrOptions.textComparison ??
-        identityComparison;
-
-
-      exact =
-        Boolean(
-          visualOrOptions.exactFileMatch ??
-          visualOrOptions.exactFile ??
-          exactFileMatch
-        );
-    }
-
-
-    const visual =
-      Number(
-        visualSimilarity || 0
+    const {
+      firstScan,
+      secondScan
+    } =
+      parseScanPair(
+        firstOrOptions,
+        secondArgument
       );
 
+    if (
+      !firstScan ||
+      !secondScan
+    ) {
+      return createDecision(
+        false,
+        {
+          stage:
+            "precheck",
 
-    const textAvailable =
-      Boolean(
-        comparison?.available
+          reason:
+            "Für die Vorprüfung fehlen Scan-Daten.",
+
+          exactFileMatch:
+            false,
+
+          visualSimilarity:
+            0
+        }
       );
-
-
-    const textSimilarity =
-      Number(
-        comparison?.similarity || 0
-      );
-
-
-    const commonStrong =
-      Number(
-        comparison?.commonStrong || 0
-      );
-
-
-    if (exact) {
-      return {
-        duplicate: true,
-        isDuplicate: true,
-
-        reason:
-          "Es wurde exakt dieselbe Bilddatei verwendet."
-      };
     }
 
-
-    /*
-     * Allein aufgrund des Bildes nur bei nahezu
-     * vollständiger Übereinstimmung blockieren.
-     */
-    if (
-      visual >=
-      LIMITS.visualOnly
-    ) {
-      return {
-        duplicate: true,
-        isDuplicate: true,
-
-        reason:
-          "Das zweite Foto stimmt visuell nahezu vollständig mit dem ersten Foto überein."
-      };
-    }
-
-
-    if (
-      textAvailable &&
-      commonStrong >=
-        LIMITS.requiredCommonIdentifiers &&
-      textSimilarity >= 0.78 &&
-      visual >=
-        LIMITS.visualWithIdentifiers
-    ) {
-      return {
-        duplicate: true,
-        isDuplicate: true,
-
-        reason:
-          "Mehrere eindeutige Kennungen und die Bildstruktur stimmen überein."
-      };
-    }
-
-
-    if (
-      textAvailable &&
-      textSimilarity >=
-        LIMITS.strongTextSimilarity &&
-      visual >=
-        LIMITS.visualWithStrongText
-    ) {
-      return {
-        duplicate: true,
-        isDuplicate: true,
-
-        reason:
-          "Etikettentext und Bildstruktur entsprechen sehr wahrscheinlich demselben Etikett."
-      };
-    }
-
-
-    if (
-      textAvailable &&
-      textSimilarity >=
-        LIMITS.mediumTextSimilarity &&
-      visual >=
-        LIMITS.visualWithMediumText
-    ) {
-      return {
-        duplicate: true,
-        isDuplicate: true,
-
-        reason:
-          "Text und Bildstruktur sind gemeinsam ungewöhnlich ähnlich."
-      };
-    }
-
-
-    return {
-      duplicate: false,
-      isDuplicate: false,
-
-      reason:
-        "Die Aufnahmen unterscheiden sich ausreichend."
-    };
-  }
-
-
-  function compareScans(
-    firstScan,
-    secondScan
-  ) {
     const firstDigest =
-      extractDigest(firstScan);
-
+      extractDigest(
+        firstScan
+      );
 
     const secondDigest =
-      extractDigest(secondScan);
-
+      extractDigest(
+        secondScan
+      );
 
     const exactFileMatch =
       Boolean(
         firstDigest &&
         secondDigest &&
-        firstDigest === secondDigest
+        firstDigest ===
+          secondDigest
       );
 
+    if (exactFileMatch) {
+      return createDecision(
+        true,
+        {
+          stage:
+            "precheck",
+
+          reason:
+            "Es wurde exakt dieselbe Bilddatei verwendet.",
+
+          exactFileMatch:
+            true,
+
+          visualSimilarity:
+            1
+        }
+      );
+    }
 
     const visualSimilarity =
       compareVisualSignatures(
@@ -2015,172 +1949,259 @@
         secondScan
       );
 
+    const duplicate =
+      visualSimilarity >=
+      SETTINGS.visualOnlyDuplicate;
 
-    const firstIdentity =
-      extractIdentitySignature(
-        firstScan
+    return createDecision(
+      duplicate,
+      {
+        stage:
+          "precheck",
+
+        reason:
+          duplicate
+            ? "Das zweite Foto ist nahezu identisch mit dem ersten Foto."
+            : "Die schnelle Vorprüfung hat keinen sicheren Doppel-Scan erkannt.",
+
+        exactFileMatch:
+          false,
+
+        visualSimilarity
+      }
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * ABSCHLUSSPRÜFUNG NACH DER OCR
+   * =========================================================
+   */
+
+  function finalCheck(
+    firstOrOptions,
+    secondArgument
+  ) {
+    const {
+      firstScan,
+      secondScan
+    } =
+      parseScanPair(
+        firstOrOptions,
+        secondArgument
       );
 
+    if (
+      !firstScan ||
+      !secondScan
+    ) {
+      return createDecision(
+        false,
+        {
+          stage:
+            "final",
 
-    const secondIdentity =
-      extractIdentitySignature(
+          reason:
+            "Für die Abschlussprüfung fehlen Scan-Daten.",
+
+          exactFileMatch:
+            false,
+
+          visualSimilarity:
+            0,
+
+          textSimilarity:
+            0,
+
+          commonStrong:
+            0
+        }
+      );
+    }
+
+    const quickDecision =
+      precheck(
+        firstScan,
         secondScan
       );
 
+    if (
+      quickDecision.duplicate
+    ) {
+      return {
+        ...quickDecision,
+        stage: "final"
+      };
+    }
+
+    const visualSimilarity =
+      quickDecision
+        .visualSimilarity;
 
     const identityComparison =
       compareIdentitySignatures(
-        firstIdentity,
-        secondIdentity
+        firstScan,
+        secondScan
       );
 
+    const textSimilarity =
+      Number(
+        identityComparison
+          .similarity || 0
+      );
 
-    const decision =
-      evaluateDuplicate({
+    const commonStrong =
+      Number(
+        identityComparison
+          .commonStrong || 0
+      );
+
+    let duplicate = false;
+
+    let reason =
+      "Die Aufnahmen unterscheiden sich ausreichend.";
+
+    if (
+      identityComparison.available &&
+      commonStrong >=
+        SETTINGS
+          .requiredStrongIdentifiers &&
+      textSimilarity >=
+        SETTINGS
+          .strongTextSimilarity &&
+      visualSimilarity >=
+        SETTINGS
+          .visualWithStrongText
+    ) {
+      duplicate = true;
+
+      reason =
+        "Mehrere eindeutige Kennungen sowie die Bildstruktur stimmen überein.";
+    } else if (
+      identityComparison.available &&
+      commonStrong >=
+        SETTINGS
+          .requiredMediumIdentifiers &&
+      textSimilarity >=
+        SETTINGS
+          .mediumTextSimilarity &&
+      visualSimilarity >=
+        SETTINGS
+          .visualWithMediumText
+    ) {
+      duplicate = true;
+
+      reason =
+        "Etikettentext und Bildstruktur entsprechen sehr wahrscheinlich demselben Etikett.";
+    }
+
+    return createDecision(
+      duplicate,
+      {
+        stage:
+          "final",
+
+        reason,
+
+        exactFileMatch:
+          quickDecision
+            .exactFileMatch,
+
         visualSimilarity,
-        identityComparison,
-        exactFileMatch
-      });
+
+        textSimilarity,
+
+        commonStrong,
+
+        identityComparison
+      }
+    );
+  }
 
 
-    return {
-      ...decision,
-
-      exactFileMatch,
-
-      visualSimilarity,
-
-      imageSimilarity:
-        visualSimilarity,
-
-      identityComparison,
-
-      textSimilarity:
-        identityComparison.similarity,
-
-      commonStrong:
-        identityComparison.commonStrong
-    };
+  function compareScans(
+    firstScan,
+    secondScan
+  ) {
+    return finalCheck(
+      firstScan,
+      secondScan
+    );
   }
 
 
   function checkDuplicate(
     firstOrOptions,
-    secondScan
+    secondArgument
   ) {
-    /*
-     * checkDuplicate(ersterScan, zweiterScan)
-     */
-    if (secondScan) {
-      return compareScans(
-        firstOrOptions,
-        secondScan
-      );
+    return finalCheck(
+      firstOrOptions,
+      secondArgument
+    );
+  }
+
+
+  function evaluateDuplicate(
+    firstOrOptions,
+    secondArgument
+  ) {
+    return finalCheck(
+      firstOrOptions,
+      secondArgument
+    );
+  }
+
+
+  function parseScanPair(
+    firstOrOptions,
+    secondArgument
+  ) {
+    if (secondArgument) {
+      return {
+        firstScan:
+          firstOrOptions,
+
+        secondScan:
+          secondArgument
+      };
     }
 
-
-    /*
-     * checkDuplicate({
-     *   firstScan,
-     *   secondScan
-     * })
-     */
     const options =
       firstOrOptions || {};
 
-
-    if (
-      options.firstScan &&
-      options.secondScan
-    ) {
-      return compareScans(
-        options.firstScan,
-        options.secondScan
-      );
-    }
-
-
-    if (
-      options.first &&
-      options.second
-    ) {
-      return compareScans(
-        options.first,
-        options.second
-      );
-    }
-
-
-    const exactFileMatch =
-      Boolean(
-        options.exactFileMatch ||
-        options.exactFile ||
-        (
-          options.firstDigest &&
-          options.secondDigest &&
-          options.firstDigest ===
-            options.secondDigest
-        )
-      );
-
-
-    const visualSimilarity =
-      Number.isFinite(
-        options.visualSimilarity
-      )
-        ? options.visualSimilarity
-        : compareVisualSignatures(
-            options.firstVisual ||
-            options.firstImageSignature,
-
-            options.secondVisual ||
-            options.secondImageSignature
-          );
-
-
-    const identityComparison =
-      options.identityComparison ||
-      options.textComparison ||
-      compareIdentitySignatures(
-        options.firstIdentity ||
-        options.firstIdentitySignature,
-
-        options.secondIdentity ||
-        options.secondIdentitySignature
-      );
-
-
-    const decision =
-      evaluateDuplicate({
-        visualSimilarity,
-        identityComparison,
-        exactFileMatch
-      });
-
-
     return {
-      ...decision,
+      firstScan:
+        options.firstScan ||
+        options.first ||
+        options.scan1 ||
+        options.referenceScan ||
+        null,
 
-      exactFileMatch,
-      visualSimilarity,
-      identityComparison,
-
-      textSimilarity:
-        identityComparison?.similarity || 0
+      secondScan:
+        options.secondScan ||
+        options.second ||
+        options.scan2 ||
+        options.currentScan ||
+        options.candidateScan ||
+        null
     };
   }
 
 
-  function extractDigest(scan) {
+  function extractDigest(
+    scan
+  ) {
     if (!scan) {
       return null;
     }
 
-
-    if (typeof scan === "string") {
+    if (
+      typeof scan ===
+      "string"
+    ) {
       return scan;
     }
-
 
     return (
       scan.fileDigest ||
@@ -2192,42 +2213,26 @@
   }
 
 
-  function extractIdentitySignature(
-    scan
+  function createDecision(
+    duplicate,
+    details
   ) {
-    if (!scan) {
-      return {
-        tokens: [],
-        strongTokens: []
-      };
-    }
+    return {
+      duplicate,
 
+      isDuplicate:
+        duplicate,
 
-    if (
-      Array.isArray(scan.tokens)
-    ) {
-      return scan;
-    }
+      blocked:
+        duplicate,
 
+      allow:
+        !duplicate,
 
-    return (
-      scan.identitySignature ||
-      scan.textSignature ||
-      createIdentitySignature(
-        scan.identityText ||
-        scan.ocrText ||
-        scan.text ||
-        ""
-      )
-    );
+      ...details
+    };
   }
 
-
-  /*
-   * =========================================================
-   * HILFSFUNKTIONEN
-   * =========================================================
-   */
 
   function percentileValue(
     values,
@@ -2240,60 +2245,58 @@
       return 0;
     }
 
-
     const sorted =
       [...values]
         .sort(
-          (first, second) =>
+          (
+            first,
+            second
+          ) =>
             first - second
         );
-
 
     const position =
       percentile /
       100 *
-      (sorted.length - 1);
+      (
+        sorted.length - 1
+      );
 
-
-    const lowerIndex =
+    const lower =
       Math.floor(position);
 
-
-    const upperIndex =
+    const upper =
       Math.ceil(position);
 
-
     if (
-      lowerIndex === upperIndex
+      lower === upper
     ) {
-      return sorted[
-        lowerIndex
-      ];
+      return sorted[lower];
     }
 
-
     const fraction =
-      position -
-      lowerIndex;
-
+      position - lower;
 
     return (
-      sorted[lowerIndex] *
-        (1 - fraction) +
-      sorted[upperIndex] *
+      sorted[lower] *
+        (
+          1 - fraction
+        ) +
+      sorted[upper] *
         fraction
     );
   }
 
 
-  function formatPercent(value) {
+  function formatPercent(
+    value
+  ) {
     if (
       value == null ||
       !Number.isFinite(value)
     ) {
       return "—";
     }
-
 
     return `${
       Math.round(
@@ -2305,132 +2308,255 @@
 
   /*
    * =========================================================
+   * TEXTHINWEIS AUF QUERFORMAT ÄNDERN
+   * =========================================================
+   */
+
+  function updateLandscapeInstructions() {
+    if (!document.body) {
+      return;
+    }
+
+    const walker =
+      document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT
+      );
+
+    const textNodes = [];
+
+    while (
+      walker.nextNode()
+    ) {
+      textNodes.push(
+        walker.currentNode
+      );
+    }
+
+    for (
+      const node
+      of textNodes
+    ) {
+      const value =
+        node.nodeValue || "";
+
+      if (
+        value.includes(
+          "Du kannst das Handy beim Fotografieren quer halten."
+        )
+      ) {
+        node.nodeValue =
+          value.replace(
+            "Du kannst das Handy beim Fotografieren quer halten.",
+            "Halte das Handy beim Fotografieren immer quer."
+          );
+      }
+
+      if (
+        value.includes(
+          "Hoch- und Querformat werden unterstützt."
+        )
+      ) {
+        node.nodeValue =
+          value.replace(
+            "Hoch- und Querformat werden unterstützt.",
+            "Es werden ausschließlich Querformatfotos unterstützt."
+          );
+      }
+    }
+  }
+
+
+  /*
+   * =========================================================
+   * SCHNELLEN OCR-MODUS INSTALLIEREN
+   * =========================================================
+   *
+   * Falls die index.html eine globale Funktion
+   * createRecognitionPasses verwendet, wird sie
+   * durch die schnelle Drei-Durchlauf-Version ersetzt.
+   */
+
+  function installFastRecognitionMode() {
+    try {
+      window.createRecognitionPasses =
+        createRecognitionPasses;
+    } catch (error) {
+      console.warn(
+        "Der schnelle OCR-Modus konnte nicht installiert werden.",
+        error
+      );
+    }
+  }
+
+
+  /*
+   * =========================================================
    * ÖFFENTLICHE SCHNITTSTELLE
    * =========================================================
    */
 
-  window.DuplicateFix = Object.freeze({
-    version:
-      VERSION,
+  window.DuplicateFix =
+    Object.freeze({
+      version:
+        VERSION,
 
-    limits:
-      LIMITS,
+      settings:
+        SETTINGS,
 
-    codeOcrParameters:
-      CODE_OCR_PARAMETERS,
+      limits:
+        SETTINGS,
 
+      codeOcrParameters:
+        CODE_OCR_PARAMETERS,
 
-    getCodeOcrParameters,
+      getCodeOcrParameters,
 
-    configureCodeWorker,
-
-    configureCodeRecognition:
       configureCodeWorker,
 
+      configureCodeRecognition:
+        configureCodeWorker,
 
-    extractStrictDCodes,
-
-    extractDCodes:
       extractStrictDCodes,
 
-    findDCodes:
-      extractStrictDCodes,
+      extractDCodes:
+        extractStrictDCodes,
 
+      findDCodes:
+        extractStrictDCodes,
 
-    normalizeManualCode,
+      normalizeManualCode,
 
-    isValidCode,
+      isValidCode,
 
+      isLandscape,
 
-    calculateFileDigest,
+      normalizeLandscapeCanvas,
 
-    calculateDigest:
+      ensureLandscape:
+        normalizeLandscapeCanvas,
+
+      createCanvasFromFile,
+
       calculateFileDigest,
 
+      calculateDigest:
+        calculateFileDigest,
 
-    createCanvasFromFile,
+      createRecognitionPasses,
 
+      getRecognitionPasses:
+        createRecognitionPasses,
 
-    prepareScan,
+      createFastRecognitionPasses:
+        createRecognitionPasses,
 
-    prepareImage:
-      prepareScan,
+      createVisualSignature,
 
-    createPreparedScan:
-      prepareScan,
+      createImageSignature:
+        createVisualSignature,
 
-    createScanSignature:
-      prepareScan,
+      createPhotoSignature:
+        createVisualSignature,
 
+      createFingerprint:
+        createVisualSignature,
 
-    addIdentityToScan,
+      compareVisualSignatures,
 
-    updateScanIdentity:
-      addIdentityToScan,
+      compareImageSignatures:
+        compareVisualSignatures,
 
+      comparePhotoSignatures:
+        compareVisualSignatures,
 
-    createIdentitySignature,
+      compareFingerprints:
+        compareVisualSignatures,
 
-    createTextSignature:
       createIdentitySignature,
 
+      createTextSignature:
+        createIdentitySignature,
 
-    compareIdentitySignatures,
-
-    compareTextSignatures:
       compareIdentitySignatures,
 
-    compareIdentitySignature:
-      compareIdentitySignatures,
+      compareTextSignatures:
+        compareIdentitySignatures,
 
+      prepareScan,
 
-    createVisualSignature,
+      prepareImage:
+        prepareScan,
 
-    createImageSignature:
-      createVisualSignature,
+      createPreparedScan:
+        prepareScan,
 
-    createPhotoSignature:
-      createVisualSignature,
+      createScanSignature:
+        prepareScan,
 
-    createFingerprint:
-      createVisualSignature,
+      addIdentityToScan,
 
+      attachIdentity:
+        addIdentityToScan,
 
-    compareVisualSignatures,
+      updateScanIdentity:
+        addIdentityToScan,
 
-    compareImageSignatures:
-      compareVisualSignatures,
+      precheck,
 
-    comparePhotoSignatures:
-      compareVisualSignatures,
+      preCheck:
+        precheck,
 
-    compareFingerprints:
-      compareVisualSignatures,
+      quickCheck:
+        precheck,
 
+      preliminaryCheck:
+        precheck,
 
-    evaluateDuplicate,
+      finalCheck,
 
-    assessDuplicate:
-      evaluateDuplicate,
+      postcheck:
+        finalCheck,
 
+      postCheck:
+        finalCheck,
 
-    compareScans,
-
-    comparePreparedScans:
       compareScans,
 
-    compareScanSignatures:
-      compareScans,
+      comparePreparedScans:
+        compareScans,
 
-
-    checkDuplicate,
-
-    isDuplicateScan:
       checkDuplicate,
 
+      isDuplicateScan:
+        checkDuplicate,
 
-    formatPercent
-  });
+      evaluateDuplicate,
+
+      assessDuplicate:
+        evaluateDuplicate,
+
+      formatPercent
+    });
+
+
+  installFastRecognitionMode();
+
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      updateLandscapeInstructions,
+      {
+        once: true
+      }
+    );
+  } else {
+    updateLandscapeInstructions();
+  }
 
 
   console.info(
