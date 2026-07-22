@@ -60,7 +60,7 @@
     }
 
     .app {
-      width: min(900px, 100%);
+      width: min(980px, 100%);
       margin: 0 auto;
 
       padding:
@@ -73,7 +73,7 @@
       margin-bottom: 18px;
     }
 
-    .header .eyebrow {
+    .eyebrow {
       margin: 0 0 4px;
       color: #72bfe8;
       font-size: 0.78rem;
@@ -92,6 +92,17 @@
       color: var(--muted);
       font-size: 0.9rem;
       line-height: 1.45;
+    }
+
+    .orientation-tip {
+      margin-top: 12px;
+      border: 1px solid #3a668a;
+      border-radius: 13px;
+      background: rgba(23, 137, 212, 0.12);
+      padding: 11px 13px;
+      color: #c9eaff;
+      font-size: 0.88rem;
+      line-height: 1.4;
     }
 
     .progress {
@@ -189,8 +200,10 @@
     .preview img {
       display: none;
       width: 100%;
-      max-height: 520px;
+      height: auto;
+      max-height: 72vh;
       object-fit: contain;
+      image-orientation: from-image;
     }
 
     .preview img.visible {
@@ -366,7 +379,7 @@
     }
 
     pre {
-      max-height: 360px;
+      max-height: 430px;
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-word;
@@ -386,6 +399,20 @@
         font-size: 0.73rem;
       }
     }
+
+    @media (orientation: landscape) and (max-height: 600px) {
+      .app {
+        width: min(1100px, 100%);
+      }
+
+      .preview img {
+        max-height: 82vh;
+      }
+
+      .scanner-header {
+        padding-top: 13px;
+      }
+    }
   </style>
 </head>
 
@@ -400,63 +427,48 @@
         Zwei Etiketten werden nacheinander fotografiert.
         Die Bilder werden nur im Browser verarbeitet und nicht gespeichert.
       </div>
+
+      <div class="orientation-tip">
+        Du kannst das Handy beim Fotografieren quer halten.
+        Dadurch kannst du näher an das Etikett herangehen und die Schrift größer aufnehmen.
+        Das gesamte Etikett sollte trotzdem möglichst vollständig sichtbar sein.
+      </div>
     </header>
 
     <section class="progress">
-      <div
-        id="progress1"
-        class="progress-item active"
-      >
+      <div id="progress1" class="progress-item active">
         1. Etikett 1
       </div>
 
-      <div
-        id="progress2"
-        class="progress-item"
-      >
+      <div id="progress2" class="progress-item">
         2. Etikett 2
       </div>
 
-      <div
-        id="progress3"
-        class="progress-item"
-      >
+      <div id="progress3" class="progress-item">
         3. Vergleich
       </div>
     </section>
 
-    <section
-      id="status"
-      class="status"
-    >
+    <section id="status" class="status">
       Fotografiere zuerst das erste Etikett.
     </section>
 
-    <section
-      id="card1"
-      class="scanner-card"
-    >
+    <section id="card1" class="scanner-card">
       <div class="scanner-header">
         <h2>Etikett 1</h2>
 
         <p>
-          Fotografiere das erste Etikett so,
-          dass die D-Nummer deutlich lesbar ist.
+          Fotografiere das Etikett möglichst nah.
+          Hoch- und Querformat werden unterstützt.
         </p>
       </div>
 
       <div class="preview">
-        <div
-          id="placeholder1"
-          class="preview-placeholder"
-        >
+        <div id="placeholder1" class="preview-placeholder">
           Noch kein Foto aufgenommen
         </div>
 
-        <img
-          id="preview1"
-          alt="Etikett 1"
-        >
+        <img id="preview1" alt="Etikett 1">
       </div>
 
       <div class="fields">
@@ -476,10 +488,7 @@
         </div>
       </div>
 
-      <p
-        id="ocrInfo1"
-        class="ocr-info"
-      ></p>
+      <p id="ocrInfo1" class="ocr-info"></p>
 
       <div class="actions">
         <label class="camera-button primary">
@@ -493,41 +502,28 @@
           >
         </label>
 
-        <button
-          id="confirm1"
-          class="confirm"
-          disabled
-        >
+        <button id="confirm1" class="confirm" disabled>
           Etikett 1 übernehmen
         </button>
       </div>
     </section>
 
-    <section
-      id="card2"
-      class="scanner-card hidden"
-    >
+    <section id="card2" class="scanner-card hidden">
       <div class="scanner-header">
         <h2>Etikett 2</h2>
 
         <p>
           Fotografiere jetzt das zweite Etikett.
-          Das erste Etikett darf nicht erneut aufgenommen werden.
+          Etikett 1 darf nicht erneut aufgenommen werden.
         </p>
       </div>
 
       <div class="preview">
-        <div
-          id="placeholder2"
-          class="preview-placeholder"
-        >
+        <div id="placeholder2" class="preview-placeholder">
           Noch kein Foto aufgenommen
         </div>
 
-        <img
-          id="preview2"
-          alt="Etikett 2"
-        >
+        <img id="preview2" alt="Etikett 2">
       </div>
 
       <div class="fields">
@@ -547,10 +543,7 @@
         </div>
       </div>
 
-      <p
-        id="ocrInfo2"
-        class="ocr-info"
-      ></p>
+      <p id="ocrInfo2" class="ocr-info"></p>
 
       <div class="actions">
         <label class="camera-button primary">
@@ -564,20 +557,13 @@
           >
         </label>
 
-        <button
-          id="confirm2"
-          class="confirm"
-          disabled
-        >
+        <button id="confirm2" class="confirm" disabled>
           Etikett 2 übernehmen
         </button>
       </div>
     </section>
 
-    <section
-      id="comparison"
-      class="comparison hidden"
-    >
+    <section id="comparison" class="comparison hidden">
       <h2>Prüfergebnis</h2>
 
       <div class="comparison-grid">
@@ -592,15 +578,9 @@
         </div>
       </div>
 
-      <div
-        id="comparisonResult"
-        class="comparison-result"
-      ></div>
+      <div id="comparisonResult" class="comparison-result"></div>
 
-      <button
-        id="resetButton"
-        class="primary"
-      >
+      <button id="resetButton" class="primary">
         Neue Prüfung starten
       </button>
     </section>
@@ -613,10 +593,7 @@
       </div>
     </details>
 
-    <canvas
-      id="sourceCanvas"
-      class="hidden"
-    ></canvas>
+    <canvas id="sourceCanvas" class="hidden"></canvas>
   </main>
 
   <script
@@ -626,81 +603,45 @@
   <script>
     "use strict";
 
+    const APP_VERSION = "12.0";
+
     const elements = {
-      status:
-        document.getElementById("status"),
+      status: document.getElementById("status"),
 
-      progress1:
-        document.getElementById("progress1"),
+      progress1: document.getElementById("progress1"),
+      progress2: document.getElementById("progress2"),
+      progress3: document.getElementById("progress3"),
 
-      progress2:
-        document.getElementById("progress2"),
+      card1: document.getElementById("card1"),
+      card2: document.getElementById("card2"),
 
-      progress3:
-        document.getElementById("progress3"),
+      file1: document.getElementById("file1"),
+      file2: document.getElementById("file2"),
 
-      card1:
-        document.getElementById("card1"),
+      preview1: document.getElementById("preview1"),
+      preview2: document.getElementById("preview2"),
 
-      card2:
-        document.getElementById("card2"),
+      placeholder1: document.getElementById("placeholder1"),
+      placeholder2: document.getElementById("placeholder2"),
 
-      file1:
-        document.getElementById("file1"),
+      code1: document.getElementById("code1"),
+      code2: document.getElementById("code2"),
 
-      file2:
-        document.getElementById("file2"),
+      ocrInfo1: document.getElementById("ocrInfo1"),
+      ocrInfo2: document.getElementById("ocrInfo2"),
 
-      preview1:
-        document.getElementById("preview1"),
+      confirm1: document.getElementById("confirm1"),
+      confirm2: document.getElementById("confirm2"),
 
-      preview2:
-        document.getElementById("preview2"),
+      comparison: document.getElementById("comparison"),
+      finalCode1: document.getElementById("finalCode1"),
+      finalCode2: document.getElementById("finalCode2"),
+      comparisonResult: document.getElementById("comparisonResult"),
 
-      placeholder1:
-        document.getElementById("placeholder1"),
+      resetButton: document.getElementById("resetButton"),
+      debugOutput: document.getElementById("debugOutput"),
 
-      placeholder2:
-        document.getElementById("placeholder2"),
-
-      code1:
-        document.getElementById("code1"),
-
-      code2:
-        document.getElementById("code2"),
-
-      ocrInfo1:
-        document.getElementById("ocrInfo1"),
-
-      ocrInfo2:
-        document.getElementById("ocrInfo2"),
-
-      confirm1:
-        document.getElementById("confirm1"),
-
-      confirm2:
-        document.getElementById("confirm2"),
-
-      comparison:
-        document.getElementById("comparison"),
-
-      finalCode1:
-        document.getElementById("finalCode1"),
-
-      finalCode2:
-        document.getElementById("finalCode2"),
-
-      comparisonResult:
-        document.getElementById("comparisonResult"),
-
-      resetButton:
-        document.getElementById("resetButton"),
-
-      debugOutput:
-        document.getElementById("debugOutput"),
-
-      sourceCanvas:
-        document.getElementById("sourceCanvas")
+      sourceCanvas: document.getElementById("sourceCanvas")
     };
 
 
@@ -723,25 +664,18 @@
       workerReady: false,
       workerLoading: false,
 
-      scan1:
-        createEmptyScan(),
-
-      scan2:
-        createEmptyScan()
+      scan1: createEmptyScan(),
+      scan2: createEmptyScan()
     };
 
 
     elements.file1.addEventListener(
       "change",
       async () => {
-        const file =
-          elements.file1.files?.[0];
+        const file = elements.file1.files?.[0];
 
         if (file) {
-          await processFile(
-            file,
-            1
-          );
+          await processFile(file, 1);
         }
 
         elements.file1.value = "";
@@ -752,14 +686,10 @@
     elements.file2.addEventListener(
       "change",
       async () => {
-        const file =
-          elements.file2.files?.[0];
+        const file = elements.file2.files?.[0];
 
         if (file) {
-          await processFile(
-            file,
-            2
-          );
+          await processFile(file, 2);
         }
 
         elements.file2.value = "";
@@ -771,9 +701,7 @@
       "input",
       () => {
         elements.code1.value =
-          normalizeManualCode(
-            elements.code1.value
-          );
+          normalizeManualCode(elements.code1.value);
 
         updateConfirmAvailability(1);
       }
@@ -784,9 +712,7 @@
       "input",
       () => {
         elements.code2.value =
-          normalizeManualCode(
-            elements.code2.value
-          );
+          normalizeManualCode(elements.code2.value);
 
         updateConfirmAvailability(2);
       }
@@ -798,12 +724,10 @@
       confirmFirstScan
     );
 
-
     elements.confirm2.addEventListener(
       "click",
       confirmSecondScan
     );
-
 
     elements.resetButton.addEventListener(
       "click",
@@ -827,9 +751,7 @@
     }
 
 
-    function updateConfirmAvailability(
-      slotNumber
-    ) {
+    function updateConfirmAvailability(slotNumber) {
       const slot =
         slotNumber === 1
           ? state.scan1
@@ -852,20 +774,12 @@
     }
 
 
-    function setStatus(
-      message,
-      type = ""
-    ) {
-      elements.status.textContent =
-        message;
-
-      elements.status.className =
-        "status";
+    function setStatus(message, type = "") {
+      elements.status.textContent = message;
+      elements.status.className = "status";
 
       if (type) {
-        elements.status.classList.add(
-          type
-        );
+        elements.status.classList.add(type);
       }
     }
 
@@ -910,8 +824,7 @@
                 ) {
                   const percent =
                     Math.round(
-                      (message.progress || 0) *
-                      100
+                      (message.progress || 0) * 100
                     );
 
                   setStatus(
@@ -932,24 +845,17 @@
 
     async function configureCodeRecognition() {
       /*
-       * Alle Buchstaben müssen erlaubt sein.
-       *
-       * Würde ausschließlich D erlaubt,
-       * könnte Tesseract ein sichtbares A
-       * zwangsweise als D interpretieren.
+       * Alle Buchstaben bleiben erlaubt.
+       * Dadurch wird ein A nicht durch die Whitelist
+       * zu einem D gezwungen.
        */
       await state.worker.setParameters({
         tessedit_char_whitelist:
           "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 
-        tessedit_pageseg_mode:
-          "11",
-
-        preserve_interword_spaces:
-          "1",
-
-        user_defined_dpi:
-          "300"
+        tessedit_pageseg_mode: "11",
+        preserve_interword_spaces: "1",
+        user_defined_dpi: "300"
       });
     }
 
@@ -959,22 +865,14 @@
         tessedit_char_whitelist:
           "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.:/_()[]",
 
-        tessedit_pageseg_mode:
-          "11",
-
-        preserve_interword_spaces:
-          "1",
-
-        user_defined_dpi:
-          "300"
+        tessedit_pageseg_mode: "11",
+        preserve_interword_spaces: "1",
+        user_defined_dpi: "300"
       });
     }
 
 
-    async function processFile(
-      file,
-      slotNumber
-    ) {
+    async function processFile(file, slotNumber) {
       const slot =
         slotNumber === 1
           ? state.scan1
@@ -1000,9 +898,7 @@
           ? elements.ocrInfo1
           : elements.ocrInfo2;
 
-      resetSlotForNewPhoto(
-        slotNumber
-      );
+      resetSlotForNewPhoto(slotNumber);
 
       setStatus(
         `Etikett ${slotNumber} wird vorbereitet …`,
@@ -1012,46 +908,47 @@
       try {
         if (!window.DuplicateFix) {
           throw new Error(
-            "duplicate-fix.js wurde nicht geladen."
+            "duplicate-fix.js wurde nicht geladen. " +
+            "Prüfe Dateiname und Speicherort."
           );
         }
 
-        const image =
-          await loadImage(file);
+        const image = await loadImage(file);
 
         const sourceCanvas =
           drawImageToCanvas(
             image,
             elements.sourceCanvas,
-            2600
+            3000
           );
+
+        appendDebug(
+          `\nBILD ETIKETT ${slotNumber}\n` +
+          `Ausrichtung: ${
+            sourceCanvas.width >= sourceCanvas.height
+              ? "Querformat"
+              : "Hochformat"
+          }\n` +
+          `Auflösung: ${sourceCanvas.width} × ${sourceCanvas.height}\n`
+        );
 
         slot.previewUrl =
           URL.createObjectURL(file);
 
-        preview.src =
-          slot.previewUrl;
-
-        preview.classList.add(
-          "visible"
-        );
-
-        placeholder.classList.add(
-          "hidden"
-        );
+        preview.src = slot.previewUrl;
+        preview.classList.add("visible");
+        placeholder.classList.add("hidden");
 
         const metadata =
-          await window.DuplicateFix
-            .prepareScan(
-              file,
-              sourceCanvas
-            );
+          await window.DuplicateFix.prepareScan(
+            file,
+            sourceCanvas
+          );
 
-        slot.metadata =
-          metadata;
+        slot.metadata = metadata;
 
         /*
-         * Vorprüfung des zweiten Fotos.
+         * Schnelle Doppel-Scan-Vorprüfung.
          */
         if (
           slotNumber === 2 &&
@@ -1079,7 +976,6 @@
         }
 
         await initializeWorker();
-
         await configureCodeRecognition();
 
         const result =
@@ -1090,22 +986,21 @@
 
         await configureIdentityRecognition();
 
-        const identityText =
-          await readIdentityText(
+        const identityData =
+          await readIdentityData(
             sourceCanvas,
             slotNumber
           );
 
-        metadata.textSignature =
-          window.DuplicateFix
-            .createTextSignature(
-              identityText
-            );
+        metadata.identitySignature =
+          window.DuplicateFix.createIdentitySignature(
+            identityData
+          );
 
         await configureCodeRecognition();
 
         /*
-         * Abschließende Doppel-Scan-Prüfung.
+         * Vollständige Doppel-Scan-Prüfung.
          */
         if (
           slotNumber === 2 &&
@@ -1137,11 +1032,7 @@
 
         appendDebug(
           `\nERGEBNIS ETIKETT ${slotNumber}\n` +
-          JSON.stringify(
-            result,
-            null,
-            2
-          )
+          JSON.stringify(result, null, 2)
         );
 
         if (!result.code) {
@@ -1149,7 +1040,7 @@
 
           info.textContent =
             "Keine sichere D-Nummer erkannt. " +
-            "Gültig ist ein einzelner Textblock aus D " +
+            "Gültig ist ein einzelner OCR-Block aus D " +
             "direkt gefolgt von einer Zahlenfolge.";
 
           setStatus(
@@ -1158,23 +1049,18 @@
           );
 
           codeInput.focus();
-
-          updateConfirmAvailability(
-            slotNumber
-          );
+          updateConfirmAvailability(slotNumber);
 
           return;
         }
 
-        slot.code =
-          result.code;
-
-        codeInput.value =
-          result.code;
+        slot.code = result.code;
+        codeInput.value = result.code;
 
         info.textContent =
-          `${result.votes} voneinander unabhängige ` +
-          "OCR-Prüfungen erkannten denselben Wert.";
+          result.votes >= 2
+            ? `${result.votes} OCR-Prüfungen erkannten denselben Wert.`
+            : "Ein sehr sicherer OCR-Treffer wurde erkannt. Bitte sorgfältig kontrollieren.";
 
         setStatus(
           `Etikett ${slotNumber}: ${result.code} erkannt. ` +
@@ -1182,33 +1068,26 @@
           "success"
         );
 
-        updateConfirmAvailability(
-          slotNumber
-        );
+        updateConfirmAvailability(slotNumber);
       } catch (error) {
         console.error(error);
 
         slot.hasImage = false;
 
         setStatus(
-          error.message ||
-          String(error),
+          error.message || String(error),
           "error"
         );
 
         info.textContent =
           "Foto erneut aufnehmen.";
 
-        updateConfirmAvailability(
-          slotNumber
-        );
+        updateConfirmAvailability(slotNumber);
       }
     }
 
 
-    function resetSlotForNewPhoto(
-      slotNumber
-    ) {
+    function resetSlotForNewPhoto(slotNumber) {
       const slot =
         slotNumber === 1
           ? state.scan1
@@ -1243,21 +1122,14 @@
       slot.metadata = null;
 
       preview.src = "";
+      preview.classList.remove("visible");
 
-      preview.classList.remove(
-        "visible"
-      );
-
-      placeholder.classList.remove(
-        "hidden"
-      );
+      placeholder.classList.remove("hidden");
 
       input.value = "";
       info.textContent = "";
 
-      updateConfirmAvailability(
-        slotNumber
-      );
+      updateConfirmAvailability(slotNumber);
     }
 
 
@@ -1265,14 +1137,114 @@
       sourceCanvas,
       slotNumber
     ) {
-      const passes =
-        createRecognitionPasses(
-          sourceCanvas
+      const normalPasses =
+        createRecognitionPasses(sourceCanvas);
+
+      let result =
+        await runRecognitionPasses(
+          normalPasses,
+          slotNumber
         );
 
-      const voteMap =
-        new Map();
+      if (result.code) {
+        return result;
+      }
 
+      /*
+       * Fallback für Bilder, deren Orientierung vom
+       * Browser nicht korrekt übernommen wurde.
+       */
+      const rotated90 =
+        rotateCanvas(sourceCanvas, 90);
+
+      const rotated270 =
+        rotateCanvas(sourceCanvas, 270);
+
+      const fallbackPasses = [
+        {
+          name: "Drehung 90 Grad – Gesamtbild",
+          canvas: createPreparedCrop(
+            rotated90,
+            {
+              x: 0,
+              y: 0,
+              width: rotated90.width,
+              height: rotated90.height
+            },
+            {
+              contrast: 1.35,
+              binary: false
+            }
+          )
+        },
+
+        {
+          name: "Drehung 90 Grad – unterer Bereich",
+          canvas: createPreparedCrop(
+            rotated90,
+            {
+              x: 0,
+              y: rotated90.height * 0.48,
+              width: rotated90.width,
+              height: rotated90.height * 0.52
+            },
+            {
+              contrast: 1.45,
+              binary: false
+            }
+          )
+        },
+
+        {
+          name: "Drehung 270 Grad – Gesamtbild",
+          canvas: createPreparedCrop(
+            rotated270,
+            {
+              x: 0,
+              y: 0,
+              width: rotated270.width,
+              height: rotated270.height
+            },
+            {
+              contrast: 1.35,
+              binary: false
+            }
+          )
+        },
+
+        {
+          name: "Drehung 270 Grad – unterer Bereich",
+          canvas: createPreparedCrop(
+            rotated270,
+            {
+              x: 0,
+              y: rotated270.height * 0.48,
+              width: rotated270.width,
+              height: rotated270.height * 0.52
+            },
+            {
+              contrast: 1.45,
+              binary: false
+            }
+          )
+        }
+      ];
+
+      result =
+        await runRecognitionPasses(
+          fallbackPasses,
+          slotNumber
+        );
+
+      return result;
+    }
+
+
+    async function runRecognitionPasses(
+      passes,
+      slotNumber
+    ) {
+      const voteMap = new Map();
       const rawResults = [];
 
       for (
@@ -1280,8 +1252,7 @@
         index < passes.length;
         index += 1
       ) {
-        const pass =
-          passes[index];
+        const pass = passes[index];
 
         setStatus(
           `Etikett ${slotNumber}: Prüfung ` +
@@ -1289,133 +1260,203 @@
           "scanning"
         );
 
+        /*
+         * TSV wird ausdrücklich aktiviert.
+         * Dadurch werden einzelne OCR-Wörter ausgewertet.
+         */
         const recognition =
           await state.worker.recognize(
-            pass.canvas
+            pass.canvas,
+            {},
+            {
+              tsv: true
+            }
           );
 
         const text =
           recognition?.data?.text || "";
 
-        const confidence =
+        const tsv =
+          recognition?.data?.tsv || "";
+
+        const pageConfidence =
           Number(
             recognition?.data?.confidence || 0
           );
 
-        const candidates =
+        const words =
+          parseTsvWords(tsv);
+
+        const candidateMap =
+          new Map();
+
+        /*
+         * Bevorzugte Methode:
+         * Ein einzelnes OCR-Wort muss vollständig D + Zahlen sein.
+         */
+        for (const word of words) {
+          const token =
+            String(word.text || "")
+              .toUpperCase()
+              .trim();
+
+          if (!/^D[0-9]+$/.test(token)) {
+            continue;
+          }
+
+          const existing =
+            candidateMap.get(token);
+
+          if (
+            !existing ||
+            word.confidence > existing.confidence
+          ) {
+            candidateMap.set(
+              token,
+              {
+                code: token,
+                confidence: word.confidence,
+                source: "TSV-Wort"
+              }
+            );
+          }
+        }
+
+        /*
+         * Text-Fallback.
+         * Auch hier werden keine Wörter verbunden.
+         */
+        const textCandidates =
           extractStrictDCodes(text);
 
+        for (const code of textCandidates) {
+          if (!candidateMap.has(code)) {
+            candidateMap.set(
+              code,
+              {
+                code,
+                confidence: pageConfidence,
+                source: "OCR-Text"
+              }
+            );
+          }
+        }
+
+        const candidates =
+          [...candidateMap.values()];
+
         rawResults.push({
-          pass:
-            pass.name,
-
-          confidence,
-
-          text:
-            compactText(text),
-
+          pass: pass.name,
+          pageConfidence,
+          text: compactText(text),
           candidates
         });
 
         appendDebug(
           `\nEtikett ${slotNumber} – ${pass.name}\n` +
-          `Konfidenz: ${Math.round(confidence)} %\n` +
+          `Seiten-Konfidenz: ${Math.round(pageConfidence)} %\n` +
           `OCR-Text: ${compactText(text)}\n` +
-          `D-Treffer: ${
-            candidates.join(", ") ||
-            "keine"
+          `Gültige D-Treffer: ${
+            candidates.length
+              ? candidates
+                  .map(candidate =>
+                    `${candidate.code} (${Math.round(candidate.confidence)} %, ${candidate.source})`
+                  )
+                  .join(", ")
+              : "keine"
           }\n`
         );
 
-        for (
-          const candidate
-          of candidates
-        ) {
+        for (const candidate of candidates) {
           const current =
-            voteMap.get(candidate) ||
-            {
+            voteMap.get(candidate.code) || {
+              code: candidate.code,
               votes: 0,
-              confidenceSum: 0
+              confidenceSum: 0,
+              bestConfidence: 0,
+              wordHits: 0,
+              passes: []
             };
 
           current.votes += 1;
 
           current.confidenceSum +=
-            confidence;
+            candidate.confidence;
+
+          current.bestConfidence =
+            Math.max(
+              current.bestConfidence,
+              candidate.confidence
+            );
+
+          if (candidate.source === "TSV-Wort") {
+            current.wordHits += 1;
+          }
+
+          current.passes.push(pass.name);
 
           voteMap.set(
-            candidate,
+            candidate.code,
             current
           );
         }
 
-        const currentWinner =
+        const winner =
           chooseWinner(voteMap);
 
         /*
-         * Ein Wert wird erst akzeptiert,
-         * wenn er mindestens zweimal erkannt wurde.
+         * Derselbe Wert in zwei unabhängigen Durchläufen
+         * gilt als sicher.
          */
         if (
-          currentWinner &&
-          currentWinner.votes >= 2
+          winner &&
+          winner.votes >= 2
         ) {
           return {
-            code:
-              currentWinner.code,
-
-            votes:
-              currentWinner.votes,
-
-            averageConfidence:
-              currentWinner.averageConfidence,
-
-            passes:
-              rawResults
+            code: winner.code,
+            votes: winner.votes,
+            bestConfidence: winner.bestConfidence,
+            averageConfidence: winner.averageConfidence,
+            passes: rawResults
           };
         }
 
-        await delay(30);
+        await delay(20);
       }
 
       const winner =
         chooseWinner(voteMap);
 
+      /*
+       * Ein einzelner Treffer wird nur akzeptiert,
+       * wenn er als echtes TSV-Wort mit sehr hoher
+       * Konfidenz erkannt wurde.
+       */
       if (
-        !winner ||
-        winner.votes < 2
+        winner &&
+        winner.wordHits >= 1 &&
+        winner.bestConfidence >= 88
       ) {
         return {
-          code: null,
-          votes: 0,
-          averageConfidence: 0,
+          code: winner.code,
+          votes: winner.votes,
+          bestConfidence: winner.bestConfidence,
+          averageConfidence: winner.averageConfidence,
           passes: rawResults
         };
       }
 
       return {
-        code:
-          winner.code,
-
-        votes:
-          winner.votes,
-
-        averageConfidence:
-          winner.averageConfidence,
-
-        passes:
-          rawResults
+        code: null,
+        votes: 0,
+        bestConfidence: 0,
+        averageConfidence: 0,
+        passes: rawResults
       };
     }
 
 
     function extractStrictDCodes(text) {
-      /*
-       * Der OCR-Text wird ausschließlich
-       * an Leerzeichen, Tabs und Zeilenumbrüchen getrennt.
-       *
-       * Mehrere Textblöcke werden niemals verbunden.
-       */
       const tokens =
         String(text || "")
           .toUpperCase()
@@ -1423,20 +1464,18 @@
           .split(/\s+/)
           .filter(Boolean);
 
-      const results =
-        new Set();
+      const results = new Set();
 
       for (const token of tokens) {
         /*
-         * Erlaubt:
-         * D direkt gefolgt von mindestens einer Ziffer.
+         * Keine Korrektur und kein Zusammenfügen:
          *
-         * Nicht erlaubt:
-         * D 123
-         * A123
-         * DA123
-         * D-123
-         * D123A
+         * D123       gültig
+         * D123456    gültig
+         * D 123      ungültig
+         * A123       ungültig
+         * DA123      ungültig
+         * D123A      ungültig
          */
         if (/^D[0-9]+$/.test(token)) {
           results.add(token);
@@ -1447,40 +1486,123 @@
     }
 
 
+    function parseTsvWords(tsv) {
+      const lines =
+        String(tsv || "")
+          .split(/\r?\n/);
+
+      const words = [];
+
+      for (
+        let index = 1;
+        index < lines.length;
+        index += 1
+      ) {
+        const line = lines[index];
+
+        if (!line.trim()) {
+          continue;
+        }
+
+        const columns =
+          line.split("\t");
+
+        if (columns.length < 12) {
+          continue;
+        }
+
+        const level =
+          Number(columns[0]);
+
+        /*
+         * TSV-Level 5 entspricht einem Wort.
+         */
+        if (level !== 5) {
+          continue;
+        }
+
+        const confidence =
+          Number(columns[10]);
+
+        const text =
+          columns
+            .slice(11)
+            .join("\t")
+            .trim();
+
+        if (
+          !text ||
+          !Number.isFinite(confidence) ||
+          confidence < 0
+        ) {
+          continue;
+        }
+
+        const left = Number(columns[6]);
+        const top = Number(columns[7]);
+        const width = Number(columns[8]);
+        const height = Number(columns[9]);
+
+        if (
+          !Number.isFinite(left) ||
+          !Number.isFinite(top) ||
+          !Number.isFinite(width) ||
+          !Number.isFinite(height) ||
+          width <= 0 ||
+          height <= 0
+        ) {
+          continue;
+        }
+
+        words.push({
+          text,
+          confidence,
+          left,
+          top,
+          width,
+          height,
+          right: left + width,
+          bottom: top + height,
+
+          lineKey: [
+            columns[1],
+            columns[2],
+            columns[3],
+            columns[4]
+          ].join("-")
+        });
+      }
+
+      return words;
+    }
+
+
     function chooseWinner(voteMap) {
       let winner = null;
 
-      for (
-        const [code, data]
-        of voteMap.entries()
-      ) {
-        const averageConfidence =
-          data.confidenceSum /
-          Math.max(
-            1,
-            data.votes
-          );
-
+      for (const data of voteMap.values()) {
         const candidate = {
-          code,
-          votes:
-            data.votes,
-          averageConfidence
+          ...data,
+
+          averageConfidence:
+            data.confidenceSum /
+            Math.max(1, data.votes)
         };
 
         if (
           !winner ||
-          candidate.votes >
-            winner.votes ||
+          candidate.votes > winner.votes ||
           (
-            candidate.votes ===
-              winner.votes &&
-            candidate.averageConfidence >
-              winner.averageConfidence
+            candidate.votes === winner.votes &&
+            candidate.wordHits > winner.wordHits
+          ) ||
+          (
+            candidate.votes === winner.votes &&
+            candidate.wordHits === winner.wordHits &&
+            candidate.bestConfidence > winner.bestConfidence
           )
         ) {
-          winner =
-            candidate;
+          winner = candidate;
         }
       }
 
@@ -1488,190 +1610,161 @@
     }
 
 
-    function createRecognitionPasses(
-      sourceCanvas
-    ) {
-      const width =
-        sourceCanvas.width;
+    function createRecognitionPasses(sourceCanvas) {
+      const width = sourceCanvas.width;
+      const height = sourceCanvas.height;
 
-      const height =
-        sourceCanvas.height;
-
-      return [
+      const regions = [
         {
-          name:
-            "Gesamtbild",
-
-          canvas:
-            createPreparedCrop(
-              sourceCanvas,
-              {
-                x: 0,
-                y: 0,
-                width,
-                height
-              },
-              1.25
-            )
+          name: "Gesamtbild",
+          x: 0,
+          y: 0,
+          width,
+          height,
+          contrast: 1.30,
+          binary: false
         },
 
         {
-          name:
-            "Untere Bildhälfte",
-
-          canvas:
-            createPreparedCrop(
-              sourceCanvas,
-              {
-                x: 0,
-                y:
-                  height * 0.45,
-
-                width,
-
-                height:
-                  height * 0.55
-              },
-              1.3
-            )
+          name: "Oberer Bereich",
+          x: 0,
+          y: 0,
+          width,
+          height: height * 0.42,
+          contrast: 1.38,
+          binary: false
         },
 
         {
-          name:
-            "Unteres Bilddrittel",
-
-          canvas:
-            createPreparedCrop(
-              sourceCanvas,
-              {
-                x: 0,
-                y:
-                  height * 0.64,
-
-                width,
-
-                height:
-                  height * 0.36
-              },
-              1.35
-            )
+          name: "Mittlerer Bereich",
+          x: 0,
+          y: height * 0.22,
+          width,
+          height: height * 0.56,
+          contrast: 1.38,
+          binary: false
         },
 
         {
-          name:
-            "Mittlerer unterer Bereich",
-
-          canvas:
-            createPreparedCrop(
-              sourceCanvas,
-              {
-                x: 0,
-                y:
-                  height * 0.32,
-
-                width,
-
-                height:
-                  height * 0.55
-              },
-              1.3
-            )
+          name: "Unterer Bereich",
+          x: 0,
+          y: height * 0.50,
+          width,
+          height: height * 0.50,
+          contrast: 1.42,
+          binary: false
         },
 
         {
-          name:
-            "Gesamtbild hoher Kontrast",
+          name: "Rechte Bildhälfte",
+          x: width * 0.38,
+          y: 0,
+          width: width * 0.62,
+          height,
+          contrast: 1.42,
+          binary: false
+        },
 
-          canvas:
-            createPreparedCrop(
-              sourceCanvas,
-              {
-                x: 0,
-                y: 0,
-                width,
-                height
-              },
-              1.55
-            )
+        {
+          name: "Bereich rechts unten",
+          x: width * 0.35,
+          y: height * 0.45,
+          width: width * 0.65,
+          height: height * 0.55,
+          contrast: 1.45,
+          binary: false
+        },
+
+        {
+          name: "Bereich rechts unten Schwarz-Weiß",
+          x: width * 0.35,
+          y: height * 0.45,
+          width: width * 0.65,
+          height: height * 0.55,
+          contrast: 1.35,
+          binary: true
         }
       ];
+
+      return regions.map(region => ({
+        name: region.name,
+
+        canvas:
+          createPreparedCrop(
+            sourceCanvas,
+            {
+              x: region.x,
+              y: region.y,
+              width: region.width,
+              height: region.height
+            },
+            {
+              contrast: region.contrast,
+              binary: region.binary
+            }
+          )
+      }));
     }
 
 
     function createPreparedCrop(
       sourceCanvas,
       crop,
-      contrastFactor = 1.3
+      options = {}
     ) {
-      const targetHeight = 1000;
+      const contrast =
+        Number(options.contrast || 1.3);
+
+      const binary =
+        Boolean(options.binary);
+
+      const targetHeight = 1100;
 
       let scale =
         Math.max(
           1,
           targetHeight /
-          Math.max(
-            1,
-            crop.height
-          )
+          Math.max(1, crop.height)
         );
 
       scale =
-        Math.min(
-          scale,
-          4
-        );
+        Math.min(scale, 4.5);
 
       let targetWidth =
         Math.round(
-          crop.width *
-          scale
+          crop.width * scale
         );
 
       let targetCropHeight =
         Math.round(
-          crop.height *
-          scale
+          crop.height * scale
         );
 
-      const maxWidth = 1800;
+      const maximumWidth = 2300;
 
-      if (
-        targetWidth >
-        maxWidth
-      ) {
+      if (targetWidth > maximumWidth) {
         const reduction =
-          maxWidth /
-          targetWidth;
+          maximumWidth / targetWidth;
 
         targetWidth =
           Math.round(
-            targetWidth *
-            reduction
+            targetWidth * reduction
           );
 
         targetCropHeight =
           Math.round(
-            targetCropHeight *
-            reduction
+            targetCropHeight * reduction
           );
       }
 
       const canvas =
-        document.createElement(
-          "canvas"
-        );
+        document.createElement("canvas");
 
       canvas.width =
-        Math.max(
-          1,
-          targetWidth
-        );
+        Math.max(1, targetWidth);
 
       canvas.height =
-        Math.max(
-          1,
-          targetCropHeight
-        );
+        Math.max(1, targetCropHeight);
 
       const context =
         canvas.getContext(
@@ -1681,11 +1774,8 @@
           }
         );
 
-      context.imageSmoothingEnabled =
-        true;
-
-      context.imageSmoothingQuality =
-        "high";
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
 
       context.drawImage(
         sourceCanvas,
@@ -1711,7 +1801,8 @@
 
       enhanceImage(
         imageData,
-        contrastFactor
+        contrast,
+        binary
       );
 
       context.putImageData(
@@ -1726,52 +1817,221 @@
 
     function enhanceImage(
       imageData,
-      contrastFactor
+      contrast,
+      binary
     ) {
-      const data =
-        imageData.data;
+      const data = imageData.data;
+      const grayscale = [];
 
       for (
         let index = 0;
         index < data.length;
         index += 4
       ) {
-        const grayscale =
-          data[index] *
-            0.299 +
-          data[index + 1] *
-            0.587 +
-          data[index + 2] *
-            0.114;
+        grayscale.push(
+          data[index] * 0.299 +
+          data[index + 1] * 0.587 +
+          data[index + 2] * 0.114
+        );
+      }
 
-        const value =
+      const low =
+        percentile(grayscale, 3);
+
+      const high =
+        Math.max(
+          low + 25,
+          percentile(grayscale, 97)
+        );
+
+      const threshold =
+        binary
+          ? calculateOtsuThreshold(grayscale)
+          : 0;
+
+      for (
+        let pixel = 0;
+        pixel < grayscale.length;
+        pixel += 1
+      ) {
+        const dataIndex = pixel * 4;
+
+        let value =
+          (
+            grayscale[pixel] -
+            low
+          ) /
+          (
+            high -
+            low
+          ) *
+          255;
+
+        value =
+          (value - 128) *
+          contrast +
+          128;
+
+        value =
           Math.max(
             0,
-            Math.min(
-              255,
-
-              (
-                grayscale -
-                128
-              ) *
-              contrastFactor +
-              128
-            )
+            Math.min(255, value)
           );
 
-        data[index] =
-          value;
+        if (binary) {
+          value =
+            grayscale[pixel] < threshold
+              ? 0
+              : 255;
+        }
 
-        data[index + 1] =
-          value;
-
-        data[index + 2] =
-          value;
+        data[dataIndex] = value;
+        data[dataIndex + 1] = value;
+        data[dataIndex + 2] = value;
       }
     }
 
 
-    async function readIdentityText(
+    function calculateOtsuThreshold(values) {
+      const histogram =
+        new Array(256).fill(0);
+
+      for (const value of values) {
+        histogram[
+          Math.max(
+            0,
+            Math.min(
+              255,
+              Math.round(value)
+            )
+          )
+        ] += 1;
+      }
+
+      const total = values.length;
+
+      let totalSum = 0;
+
+      for (
+        let index = 0;
+        index < 256;
+        index += 1
+      ) {
+        totalSum +=
+          index * histogram[index];
+      }
+
+      let backgroundWeight = 0;
+      let backgroundSum = 0;
+
+      let bestVariance = -1;
+      let bestThreshold = 128;
+
+      for (
+        let threshold = 0;
+        threshold < 256;
+        threshold += 1
+      ) {
+        backgroundWeight +=
+          histogram[threshold];
+
+        if (!backgroundWeight) {
+          continue;
+        }
+
+        const foregroundWeight =
+          total - backgroundWeight;
+
+        if (!foregroundWeight) {
+          break;
+        }
+
+        backgroundSum +=
+          threshold *
+          histogram[threshold];
+
+        const backgroundMean =
+          backgroundSum /
+          backgroundWeight;
+
+        const foregroundMean =
+          (
+            totalSum -
+            backgroundSum
+          ) /
+          foregroundWeight;
+
+        const difference =
+          backgroundMean -
+          foregroundMean;
+
+        const variance =
+          backgroundWeight *
+          foregroundWeight *
+          difference *
+          difference;
+
+        if (variance > bestVariance) {
+          bestVariance = variance;
+          bestThreshold = threshold;
+        }
+      }
+
+      return bestThreshold;
+    }
+
+
+    function rotateCanvas(
+      sourceCanvas,
+      degrees
+    ) {
+      const radians =
+        degrees *
+        Math.PI /
+        180;
+
+      const swapSides =
+        Math.abs(degrees) % 180 === 90;
+
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width =
+        swapSides
+          ? sourceCanvas.height
+          : sourceCanvas.width;
+
+      canvas.height =
+        swapSides
+          ? sourceCanvas.width
+          : sourceCanvas.height;
+
+      const context =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently: true
+          }
+        );
+
+      context.translate(
+        canvas.width / 2,
+        canvas.height / 2
+      );
+
+      context.rotate(radians);
+
+      context.drawImage(
+        sourceCanvas,
+        -sourceCanvas.width / 2,
+        -sourceCanvas.height / 2
+      );
+
+      return canvas;
+    }
+
+
+    async function readIdentityData(
       sourceCanvas,
       slotNumber
     ) {
@@ -1787,35 +2047,56 @@
             {
               x: 0,
               y: 0,
-              width:
-                sourceCanvas.width,
-              height:
-                sourceCanvas.height
+              width: sourceCanvas.width,
+              height: sourceCanvas.height
             },
-            1.2
+            {
+              contrast: 1.18,
+              binary: false
+            }
           );
 
         const recognition =
           await state.worker.recognize(
-            prepared
+            prepared,
+            {},
+            {
+              tsv: true
+            }
           );
 
         const text =
           recognition?.data?.text || "";
 
+        const words =
+          parseTsvWords(
+            recognition?.data?.tsv || ""
+          );
+
         appendDebug(
           `\nIDENTITÄTSTEXT ETIKETT ${slotNumber}\n` +
-          `${compactText(text)}\n`
+          `${compactText(text)}\n` +
+          `Ausgewertete OCR-Wörter: ${words.length}\n`
         );
 
-        return text;
+        return {
+          text,
+          words,
+          width: prepared.width,
+          height: prepared.height
+        };
       } catch (error) {
         appendDebug(
           "\nIdentitätstext nicht verfügbar: " +
           `${error.message || String(error)}\n`
         );
 
-        return "";
+        return {
+          text: "",
+          words: [],
+          width: 1,
+          height: 1
+        };
       }
     }
 
@@ -1847,23 +2128,14 @@
         return;
       }
 
-      state.scan1.code =
-        code;
+      state.scan1.code = code;
+      state.scan1.confirmed = true;
 
-      state.scan1.confirmed =
-        true;
+      elements.code1.value = code;
+      elements.code1.disabled = true;
 
-      elements.code1.value =
-        code;
-
-      elements.code1.disabled =
-        true;
-
-      elements.confirm1.disabled =
-        true;
-
-      elements.file1.disabled =
-        true;
+      elements.confirm1.disabled = true;
+      elements.file1.disabled = true;
 
       elements.progress1.className =
         "progress-item complete";
@@ -1881,11 +2153,8 @@
       );
 
       elements.card2.scrollIntoView({
-        behavior:
-          "smooth",
-
-        block:
-          "start"
+        behavior: "smooth",
+        block: "start"
       });
     }
 
@@ -1917,23 +2186,14 @@
         return;
       }
 
-      state.scan2.code =
-        code;
+      state.scan2.code = code;
+      state.scan2.confirmed = true;
 
-      state.scan2.confirmed =
-        true;
+      elements.code2.value = code;
+      elements.code2.disabled = true;
 
-      elements.code2.value =
-        code;
-
-      elements.code2.disabled =
-        true;
-
-      elements.confirm2.disabled =
-        true;
-
-      elements.file2.disabled =
-        true;
+      elements.confirm2.disabled = true;
+      elements.file2.disabled = true;
 
       elements.progress2.className =
         "progress-item complete";
@@ -1946,17 +2206,11 @@
 
 
     function showComparison() {
-      const code1 =
-        state.scan1.code;
+      const code1 = state.scan1.code;
+      const code2 = state.scan2.code;
 
-      const code2 =
-        state.scan2.code;
-
-      elements.finalCode1.textContent =
-        code1;
-
-      elements.finalCode2.textContent =
-        code2;
+      elements.finalCode1.textContent = code1;
+      elements.finalCode2.textContent = code2;
 
       elements.comparison.classList.remove(
         "hidden",
@@ -2006,11 +2260,8 @@
         "progress-item complete";
 
       elements.comparison.scrollIntoView({
-        behavior:
-          "smooth",
-
-        block:
-          "start"
+        behavior: "smooth",
+        block: "start"
       });
     }
 
@@ -2021,8 +2272,7 @@
     ) {
       resetSlotForNewPhoto(2);
 
-      state.scan2.duplicateBlocked =
-        true;
+      state.scan2.duplicateBlocked = true;
 
       elements.ocrInfo2.textContent =
         "Der zweite Scan wurde verworfen. " +
@@ -2042,14 +2292,24 @@
             ? "ja"
             : "nein"
         }\n` +
-        `Bildähnlichkeit: ${
+        `Etikettenähnlichkeit: ${
           formatPercent(
-            metrics?.visualSimilarity
+            metrics?.labelVisualSimilarity
+          )
+        }\n` +
+        `Gesamtbildähnlichkeit: ${
+          formatPercent(
+            metrics?.fullVisualSimilarity
           )
         }\n` +
         `Textähnlichkeit: ${
           formatPercent(
             metrics?.textSimilarity
+          )
+        }\n` +
+        `Layoutähnlichkeit: ${
+          formatPercent(
+            metrics?.layoutSimilarity
           )
         }\n` +
         `Gemeinsame Kennungen: ${
@@ -2079,9 +2339,14 @@
             : "ZULASSEN"
         }\n` +
         `Grund: ${result.reason}\n` +
-        `Bildähnlichkeit: ${
+        `Etikettenähnlichkeit: ${
           formatPercent(
-            result.visualSimilarity
+            result.labelVisualSimilarity
+          )
+        }\n` +
+        `Gesamtbildähnlichkeit: ${
+          formatPercent(
+            result.fullVisualSimilarity
           )
         }\n` +
         `Textähnlichkeit: ${
@@ -2089,7 +2354,17 @@
             result.textSimilarity
           )
         }\n` +
-        `Gemeinsame Kennungen: ${
+        `Starke Kennungsübereinstimmung: ${
+          formatPercent(
+            result.strongOverlap
+          )
+        }\n` +
+        `Layoutähnlichkeit: ${
+          formatPercent(
+            result.layoutSimilarity
+          )
+        }\n` +
+        `Gemeinsame eindeutige Kennungen: ${
           result.commonStrong ?? "—"
         }\n`
       );
@@ -2112,7 +2387,6 @@
       const scale =
         Math.min(
           1,
-
           maximumSide /
           Math.max(
             originalWidth,
@@ -2124,8 +2398,7 @@
         Math.max(
           1,
           Math.round(
-            originalWidth *
-            scale
+            originalWidth * scale
           )
         );
 
@@ -2133,8 +2406,7 @@
         Math.max(
           1,
           Math.round(
-            originalHeight *
-            scale
+            originalHeight * scale
           )
         );
 
@@ -2180,8 +2452,7 @@
 
       return await new Promise(
         (resolve, reject) => {
-          const image =
-            new Image();
+          const image = new Image();
 
           const url =
             URL.createObjectURL(file);
@@ -2201,8 +2472,7 @@
             );
           };
 
-          image.src =
-            url;
+          image.src = url;
         }
       );
     }
@@ -2214,8 +2484,7 @@
           slot.previewUrl
         );
 
-        slot.previewUrl =
-          null;
+        slot.previewUrl = null;
       }
     }
 
@@ -2224,7 +2493,7 @@
       return String(text || "")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 1000);
+        .slice(0, 1200);
     }
 
 
@@ -2233,8 +2502,7 @@
         elements.debugOutput.textContent ===
         "Noch keine OCR-Prüfung durchgeführt."
       ) {
-        elements.debugOutput.textContent =
-          "";
+        elements.debugOutput.textContent = "";
       }
 
       elements.debugOutput.textContent +=
@@ -2251,11 +2519,52 @@
       }
 
       return `${
-        Math.round(
-          value *
-          100
-        )
+        Math.round(value * 100)
       } %`;
+    }
+
+
+    function percentile(
+      values,
+      requestedPercentile
+    ) {
+      if (
+        !Array.isArray(values) ||
+        !values.length
+      ) {
+        return 0;
+      }
+
+      const sorted =
+        [...values].sort(
+          (first, second) =>
+            first - second
+        );
+
+      const position =
+        requestedPercentile /
+        100 *
+        (sorted.length - 1);
+
+      const lower =
+        Math.floor(position);
+
+      const upper =
+        Math.ceil(position);
+
+      if (lower === upper) {
+        return sorted[lower];
+      }
+
+      const fraction =
+        position - lower;
+
+      return (
+        sorted[lower] *
+          (1 - fraction) +
+        sorted[upper] *
+          fraction
+      );
     }
 
 
@@ -2272,19 +2581,11 @@
 
 
     function resetApplication() {
-      revokePreview(
-        state.scan1
-      );
+      revokePreview(state.scan1);
+      revokePreview(state.scan2);
 
-      revokePreview(
-        state.scan2
-      );
-
-      state.scan1 =
-        createEmptyScan();
-
-      state.scan2 =
-        createEmptyScan();
+      state.scan1 = createEmptyScan();
+      state.scan2 = createEmptyScan();
 
       elements.code1.value = "";
       elements.code2.value = "";
@@ -2344,6 +2645,10 @@
         "Fotografiere zuerst das erste Etikett."
       );
 
+      appendDebug(
+        `\nAnwendung ${APP_VERSION} gestartet.\n`
+      );
+
       window.scrollTo({
         top: 0,
         behavior: "smooth"
@@ -2354,13 +2659,8 @@
     window.addEventListener(
       "beforeunload",
       async () => {
-        revokePreview(
-          state.scan1
-        );
-
-        revokePreview(
-          state.scan2
-        );
+        revokePreview(state.scan1);
+        revokePreview(state.scan2);
 
         if (state.worker) {
           await state.worker.terminate();
@@ -2369,6 +2669,26 @@
     );
   </script>
 
-  <script src="duplicate-fix.js?v=12"></script>
+  <script src="./duplicate-fix.js?v=12"></script>
+
+  <script>
+    if (!window.DuplicateFix) {
+      setStatus(
+        "duplicate-fix.js wurde nicht geladen. " +
+        "Die Datei muss direkt neben der index.html liegen.",
+        "error"
+      );
+
+      appendDebug(
+        "\nFEHLER: duplicate-fix.js nicht geladen.\n"
+      );
+    } else {
+      appendDebug(
+        `\nDoppel-Scan-Modul ${
+          window.DuplicateFix.version
+        } geladen.\n`
+      );
+    }
+  </script>
 </body>
 </html>
