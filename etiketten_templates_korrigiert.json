@@ -1,0 +1,1028 @@
+{
+  "schema": "etiketten-template-editor",
+  "version": 1,
+  "exportedAt": "2026-07-24T17:25:44.659Z",
+  "project": {
+    "formats": 12,
+    "images": 60
+  },
+  "templates": {
+    "Format_001": {
+      "version": 1,
+      "formatId": "Format_001",
+      "formatName": "Produktlabel",
+      "folder": "Format_001_Produktlabel",
+      "masterFile": "Etikettenprojekt/Format_001_Produktlabel/master_original.jpg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.06056148100664271,
+          "y": 0.04171124626608455
+        },
+        {
+          "x": 0.7589571947719961,
+          "y": 0.04313724946210728
+        },
+        {
+          "x": 0.7621657835608497,
+          "y": 0.9700534704959752
+        },
+        {
+          "x": 0.045588202654996655,
+          "y": 0.9643493489148144
+        }
+      ],
+      "normalizedSize": {
+        "width": 969,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "4b2994e5-91d5-42ef-a5f6-82223fed22fc",
+          "semantic": "batch_and_drum",
+          "name": "Batch + Fass",
+          "x": 0.6336154407284423,
+          "y": 0.37678599033563287,
+          "width": 0.35211609698552754,
+          "height": 0.05130835093783066,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^(D[0-9]+)\\s*\\/\\s*([0-9]+)$",
+          "expected": "D562900431 /0001"
+        },
+        {
+          "id": "9ee16217-bcfb-46da-995c-5bdc13bf015f",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.7584038472665697,
+          "y": 0.3106771839515474,
+          "width": 0.22829510136411724,
+          "height": 0.05328168101005142,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "25 KG"
+        },
+        {
+          "id": "d155173d-ec0c-4d95-afd8-c4801e35ca36",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.7235791945543947,
+          "y": 0.24814512536488254,
+          "width": 0.2631197540762923,
+          "height": 0.05130831329825421,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]{6,8}$",
+          "expected": "2210485"
+        }
+      ],
+      "updatedAt": "2026-07-24T16:46:02.604Z"
+    },
+    "Format_002": {
+      "version": 1,
+      "formatId": "Format_002",
+      "formatName": "BMW",
+      "folder": "Format_002_BMW",
+      "masterFile": "Etikettenprojekt/Format_002_BMW/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.07061667943952162,
+          "y": 0.08387748352321392
+        },
+        {
+          "x": 0.9402660291457263,
+          "y": 0.09677550851313735
+        },
+        {
+          "x": 0.9392986182290092,
+          "y": 0.8990327219288468
+        },
+        {
+          "x": 0.07158401655314767,
+          "y": 0.9132205297369382
+        }
+      ],
+      "normalizedSize": {
+        "width": 1349,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "94845985-cf4f-4f3f-ba8b-5cef9cf586d6",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.506892359963063,
+          "y": 0.6117800427290375,
+          "width": 0.1692865779927447,
+          "height": 0.056319100358033496,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]{6,8}$",
+          "expected": "2771325"
+        },
+        {
+          "id": "2a1a03bc-128e-49a6-b3c5-6aeaf1b9c903",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.6345828516451595,
+          "y": 0.8659033800930036,
+          "width": 0.2766626212732391,
+          "height": 0.09066014429389917,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562808964"
+        },
+        {
+          "id": "bc13463f-d090-4eee-8ad3-33726c771cae",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.265054391401999,
+          "y": 0.5032623837158499,
+          "width": 0.2340991978489646,
+          "height": 0.08791301169159049,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "14500 KG"
+        },
+        {
+          "id": "0daf3735-7ea2-471b-a9c9-0e911a722e79",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.1344618883790244,
+          "y": 0.17891172914147518,
+          "width": 0.26989118767476566,
+          "height": 0.09890206610277169,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13026903"
+        }
+      ],
+      "updatedAt": "2026-07-24T16:50:25.498Z"
+    },
+    "Format_003": {
+      "version": 1,
+      "formatId": "Format_003",
+      "formatName": "Dachser",
+      "folder": "Format_003_Dachser",
+      "masterFile": "Etikettenprojekt/Format_003_Dachser/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.2950422847429527,
+          "y": 0.05147121049664954
+        },
+        {
+          "x": 0.7593711843801958,
+          "y": 0.052760993314817616
+        },
+        {
+          "x": 0.7680773660090122,
+          "y": 0.9543329843923192
+        },
+        {
+          "x": 0.28053200662928884,
+          "y": 0.9478839718973574
+        }
+      ],
+      "normalizedSize": {
+        "width": 671,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "75c0c38a-3d7c-4497-beb5-9bb160d8603e",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.25634820977318246,
+          "y": 0.2364340302991676,
+          "width": 0.18476426702312576,
+          "height": 0.030063322275196088,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]{6,8}$",
+          "expected": "2888185"
+        },
+        {
+          "id": "dfd003a3-944b-4632-a335-3ba2c9535ae9",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.2553808726595564,
+          "y": 0.3006600955838592,
+          "width": 0.23700120918984285,
+          "height": 0.03211303264234582,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562707473"
+        },
+        {
+          "id": "482da1ca-d317-4454-b5a6-7fd55ad9884d",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.730350628152868,
+          "y": 0.33277312822620503,
+          "width": 0.0725513905683192,
+          "height": 0.03484604061488199,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+$",
+          "expected": "1"
+        },
+        {
+          "id": "65719470-0950-4b1e-8ba0-567779326a76",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.7313180390695851,
+          "y": 0.26376426640939477,
+          "width": 0.19056836350797318,
+          "height": 0.033479549660685996,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "81182979"
+        }
+      ],
+      "updatedAt": "2026-07-24T16:54:16.307Z"
+    },
+    "Format_004": {
+      "version": 1,
+      "formatId": "Format_004",
+      "formatName": "Intern1",
+      "folder": "Format_004_Intern1",
+      "masterFile": "Etikettenprojekt/Format_004_Intern1/master_original.jpg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.0619104978107051,
+          "y": 0.09919388819874798
+        },
+        {
+          "x": 0.9431681142896954,
+          "y": 0.110802105769473
+        },
+        {
+          "x": 0.9431681142896954,
+          "y": 0.9465941152760983
+        },
+        {
+          "x": 0.051269641954636486,
+          "y": 0.9388553199629686
+        }
+      ],
+      "normalizedSize": {
+        "width": 1340,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "65d8e01b-8e60-4976-98db-fa0d917219c4",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.010640855856068622,
+          "y": 0.1332972697766181,
+          "width": 0.13736397352299348,
+          "height": 0.04775663463374276,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "1904666"
+        },
+        {
+          "id": "a1c5344e-9458-4935-9c49-c9a49b38612b",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.33760578197031815,
+          "y": 0.12511043894535975,
+          "width": 0.2050786416216369,
+          "height": 0.05730797197061152,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D563000862"
+        },
+        {
+          "id": "81dfdece-b565-495c-90a9-260a42c58f24",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.6403869481300067,
+          "y": 0.12374593243974936,
+          "width": 0.21378474944736248,
+          "height": 0.05867247847622191,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "580,000 KG"
+        },
+        {
+          "id": "40933475-f418-4732-9afc-06aa345338c9",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.644256370387602,
+          "y": 0.46622925775780805,
+          "width": 0.15477629987908093,
+          "height": 0.049121089088752116,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "1006738017"
+        }
+      ],
+      "updatedAt": "2026-07-24T16:58:13.791Z"
+    },
+    "Format_005": {
+      "version": 1,
+      "formatId": "Format_005",
+      "formatName": "Intern2",
+      "folder": "Format_005_Intern2",
+      "masterFile": "Etikettenprojekt/Format_005_Intern2/master_original.jpg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.06771463119709795,
+          "y": 0.12885938503722036
+        },
+        {
+          "x": 0.8938331096607656,
+          "y": 0.12885938503722036
+        },
+        {
+          "x": 0.8928658463502305,
+          "y": 0.9207980652962515
+        },
+        {
+          "x": 0.06094316069707905,
+          "y": 0.9027408106295344
+        }
+      ],
+      "normalizedSize": {
+        "width": 1341,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "8608f0e2-2c08-4176-9009-86242bf0aa4d",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.0048367593712212815,
+          "y": 0.13712010727069524,
+          "width": 0.11608222490931075,
+          "height": 0.0573507130691508,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "83698"
+        },
+        {
+          "id": "1949b1bc-062e-4960-a569-0175ee65000e",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.3337363597127229,
+          "y": 0.1343891358167675,
+          "width": 0.189601026394347,
+          "height": 0.06281268202172861,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D5618922"
+        },
+        {
+          "id": "8475979f-ad0c-44e6-b663-9b0a1c1401ef",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.0029020482424236696,
+          "y": 0.36379204018281547,
+          "width": 0.34244257824308494,
+          "height": 0.05598521431982572,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "5,810 KG"
+        },
+        {
+          "id": "2512b9a4-b26b-4447-b91c-3d7e7319ec81",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.6345828516451594,
+          "y": 0.539940675638243,
+          "width": 0.1644498186215236,
+          "height": 0.05325437308950984,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "1006724703"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:00:57.978Z"
+    },
+    "Format_006": {
+      "version": 1,
+      "formatId": "Format_006",
+      "formatName": "Jaguar",
+      "folder": "Format_006_Jaguar",
+      "masterFile": "Etikettenprojekt/Format_006_Jaguar/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.07835548705316657,
+          "y": 0.1069327081129081
+        },
+        {
+          "x": 0.9528416330321381,
+          "y": 0.10951234755233524
+        },
+        {
+          "x": 0.9383313549184742,
+          "y": 0.9182184996599153
+        },
+        {
+          "x": 0.08802900579560913,
+          "y": 0.9156388356194578
+        }
+      ],
+      "normalizedSize": {
+        "width": 1350,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "e5a63389-9a7a-4153-914e-290171de2378",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.6974607234710362,
+          "y": 0.3078915757391869,
+          "width": 0.19830706041698148,
+          "height": 0.06323424364603553,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "2719380"
+        },
+        {
+          "id": "e89acd45-f1b1-484f-b706-3182cba25794",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.7487303285241271,
+          "y": 0.3697511824342801,
+          "width": 0.24377264278831626,
+          "height": 0.05911028035417033,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562505121"
+        },
+        {
+          "id": "2d277bf2-9730-4fc7-821b-f370d4a1439d",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.17412333736396615,
+          "y": 0.15255524052598263,
+          "width": 0.07642077592436897,
+          "height": 0.03299175877396007,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "1150"
+        },
+        {
+          "id": "f4eddc30-5f8e-4d5f-847a-c3b069aef2ca",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.4827085631069566,
+          "y": 0.32851144463755133,
+          "width": 0.20314389359129387,
+          "height": 0.06323424364603553,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13023680"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:03:25.176Z"
+    },
+    "Format_007": {
+      "version": 1,
+      "formatId": "Format_007",
+      "formatName": "Mercedes",
+      "folder": "Format_007_Mercedes",
+      "masterFile": "Etikettenprojekt/Format_007_Mercedes/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.10253928390927297,
+          "y": 0.1069327081129081
+        },
+        {
+          "x": 0.9383313549184742,
+          "y": 0.12498993817859481
+        },
+        {
+          "x": 0.917049643206337,
+          "y": 0.8924224496800686
+        },
+        {
+          "x": 0.10544133215169664,
+          "y": 0.8808142075083132
+        }
+      ],
+      "normalizedSize": {
+        "width": 1354,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "3879dc65-873c-41cd-8132-ad057ac710a1",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.763240606637791,
+          "y": 0.8698447029921234,
+          "width": 0.23216444981862158,
+          "height": 0.07720880904993069,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562909548"
+        },
+        {
+          "id": "2533c970-ac5b-4c99-aabb-bc6e19163b4c",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.2882708511444793,
+          "y": 0.5058595961762106,
+          "width": 0.20120921936404174,
+          "height": 0.07720896683317063,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "900 KG"
+        },
+        {
+          "id": "903bc273-29af-49c6-a479-5f73ea5f4735",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.5010882634782157,
+          "y": 0.605128237764908,
+          "width": 0.16541715573514965,
+          "height": 0.05514923948323054,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "2527583"
+        },
+        {
+          "id": "a7144266-ee19-4e6c-b8a5-f46f2fe80eee",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.2902055253717314,
+          "y": 0.197023886626768,
+          "width": 0.2012092193640417,
+          "height": 0.09788987904496875,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13036326"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:08:52.759Z"
+    },
+    "Format_008": {
+      "version": 1,
+      "formatId": "Format_008",
+      "formatName": "Scania",
+      "folder": "Format_008_Scania",
+      "masterFile": "Etikettenprojekt/Format_008_Scania/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.04643288258341521,
+          "y": 0.110802105769473
+        },
+        {
+          "x": 0.9383313549184742,
+          "y": 0.13143895067355654
+        },
+        {
+          "x": 0.9354292697745049,
+          "y": 0.951753344952892
+        },
+        {
+          "x": 0.0444981714546176,
+          "y": 0.9607819230841899
+        }
+      ],
+      "normalizedSize": {
+        "width": 1352,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "a056dc28-c7fc-4426-a0f9-fae7272db16b",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.07642077592436895,
+          "y": 0.4067289820605351,
+          "width": 0.2785973693035822,
+          "height": 0.08122494144229694,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "2436557"
+        },
+        {
+          "id": "72260cc4-4fec-4b35-aa92-2caec133503f",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.6926239640998149,
+          "y": 0.6738076751734233,
+          "width": 0.18669886744728684,
+          "height": 0.045430906571688245,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562404884"
+        },
+        {
+          "id": "9292e29d-2a78-43fd-b870-abf6a14d15e3",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.09383310228045648,
+          "y": 0.32963406096862474,
+          "width": 0.16928661489429037,
+          "height": 0.04956103195552648,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13013434"
+        },
+        {
+          "id": "c8a2e651-f022-469a-bef8-93be9417acec",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.8764207464031326,
+          "y": 0.520994611473183,
+          "width": 0.12285380611396607,
+          "height": 0.05506777827276772,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "1300 KG"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:12:10.179Z"
+    },
+    "Format_009": {
+      "version": 1,
+      "formatId": "Format_009",
+      "formatName": "Skoda",
+      "folder": "Format_009_Skoda",
+      "masterFile": "Etikettenprojekt/Format_009_Skoda/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.052236979068262544,
+          "y": 0.09532446594115275
+        },
+        {
+          "x": 0.950906958804886,
+          "y": 0.1069327081129081
+        },
+        {
+          "x": 0.9460701994336645,
+          "y": 0.934985873104343
+        },
+        {
+          "x": 0.05610640132585777,
+          "y": 0.9478838980942664
+        }
+      ],
+      "normalizedSize": {
+        "width": 1348,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "6e76f355-f480-410e-91f8-c4588c4be9a6",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.15477629987908095,
+          "y": 0.266997538923284,
+          "width": 0.13252721415177224,
+          "height": 0.05353220303873585,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "349430"
+        },
+        {
+          "id": "df3835b3-bb2c-4411-b519-717ee23850c4",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.1363965995078219,
+          "y": 0.3301381022083624,
+          "width": 0.15380892586390946,
+          "height": 0.05078710685792615,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13025493"
+        },
+        {
+          "id": "8b04a277-c2f8-447c-bd54-8105fb5ed2fd",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.7584038472665697,
+          "y": 0.3273928489435001,
+          "width": 0.07932289796988357,
+          "height": 0.05353236012278845,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+$",
+          "expected": "350"
+        },
+        {
+          "id": "ae81d3f2-be9e-45b2-9656-6ef8d54f3b61",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.7090689164407308,
+          "y": 0.6307422089417402,
+          "width": 0.15090687762148586,
+          "height": 0.05215960258698009,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562707598"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:15:31.547Z"
+    },
+    "Format_010": {
+      "version": 1,
+      "formatId": "Format_010",
+      "formatName": "Stellantis",
+      "folder": "Format_010_Stellantis",
+      "masterFile": "Etikettenprojekt/Format_010_Stellantis/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.05707373843948382,
+          "y": 0.10822249093107618
+        },
+        {
+          "x": 0.9122128838351156,
+          "y": 0.11467150342603788
+        },
+        {
+          "x": 0.918016906516872,
+          "y": 0.9014510278113663
+        },
+        {
+          "x": 0.06384520893950273,
+          "y": 0.9259572949730452
+        }
+      ],
+      "normalizedSize": {
+        "width": 1349,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "ef23f559-41e3-46cf-a1c9-fd6aa4a97d38",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.48561064825092576,
+          "y": 0.6651801902466558,
+          "width": 0.1422006959926692,
+          "height": 0.05906654736150992,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "1938799"
+        },
+        {
+          "id": "312a7e61-18fe-4629-813b-0453379e380e",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.7903264886378665,
+          "y": 0.6638065191451121,
+          "width": 0.20507856781854597,
+          "height": 0.06456107456710063,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562706812"
+        },
+        {
+          "id": "fe9166d9-d3a0-4521-b3ab-f4e7f64a785b",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.24957677617470908,
+          "y": 0.4989697597738909,
+          "width": 0.22345826818980496,
+          "height": 0.10989117291414752,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "1.150"
+        },
+        {
+          "id": "f8bb6562-3cbc-4858-a8d5-1dfd5cf5b1f4",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.20024180844732473,
+          "y": 0.1816590189443678,
+          "width": 0.27182589880356334,
+          "height": 0.09890206610277169,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "9017859146"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:18:43.372Z"
+    },
+    "Format_011": {
+      "version": 1,
+      "formatId": "Format_011",
+      "formatName": "VW",
+      "folder": "Format_011_VW",
+      "masterFile": "Etikettenprojekt/Format_011_VW/master_original.jpeg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.06577992006830033,
+          "y": 0.09274487570378627
+        },
+        {
+          "x": 0.934461858857788,
+          "y": 0.110802105769473
+        },
+        {
+          "x": 0.9315599213200009,
+          "y": 0.923377729336709
+        },
+        {
+          "x": 0.05900844956828144,
+          "y": 0.9195082824780834
+        }
+      ],
+      "normalizedSize": {
+        "width": 1345,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "69841732-8331-407a-8462-d520cb8acd9d",
+          "semantic": "idh",
+          "name": "IDH",
+          "x": 0.3637243268567677,
+          "y": 0.8495818957785999,
+          "width": 0.2718258619020178,
+          "height": 0.0972392077662356,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "2892944"
+        },
+        {
+          "id": "d8ac90ce-e615-4bed-b1c1-d357bfe0218a",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0.7555018359256914,
+          "y": 0.3565379194532642,
+          "width": 0.1460701182502645,
+          "height": 0.04519579187049783,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "180 LTR"
+        },
+        {
+          "id": "285b0f2b-33d4-47c2-85b3-3611c73f55b4",
+          "semantic": "delivery_note",
+          "name": "Lieferscheinnummer",
+          "x": 0.08029019818196417,
+          "y": 0.35790746515624,
+          "width": 0.14026602176541716,
+          "height": 0.042456595974906815,
+          "required": true,
+          "ocrMode": "word",
+          "regex": "^[0-9]+$",
+          "expected": "13026260"
+        },
+        {
+          "id": "c3634163-2060-4ed4-a978-cf7b0db49df2",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.7748488734105766,
+          "y": 0.6948208280806248,
+          "width": 0.19153562681850808,
+          "height": 0.06163049704066704,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562707620"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:22:05.322Z"
+    },
+    "Format_012": {
+      "version": 1,
+      "formatId": "Format_012",
+      "formatName": "Tesla",
+      "folder": "Format_012_Tesla",
+      "masterFile": "Etikettenprojekt/Format_012_Tesla/master_original.jpg",
+      "sourceSize": {
+        "width": 2200,
+        "height": 1650
+      },
+      "r0": [
+        {
+          "x": 0.06094316069707905,
+          "y": 0.05147123509767987
+        },
+        {
+          "x": 0.9093107986911464,
+          "y": 0.05405080073401602
+        },
+        {
+          "x": 0.9054413026304603,
+          "y": 0.9324063074680068
+        },
+        {
+          "x": 0.06287787182587666,
+          "y": 0.928536909811442
+        }
+      ],
+      "normalizedSize": {
+        "width": 1220,
+        "height": 950
+      },
+      "fields": [
+        {
+          "id": "d8b9f61c-7ed9-4e3a-9b50-83cbc3f107a1",
+          "semantic": "weight",
+          "name": "Gewicht / Menge",
+          "x": 0,
+          "y": 0.465526662430939,
+          "width": 0.19250300083367972,
+          "height": 0.0409953446874702,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^[0-9]+(?:[.,][0-9]+)?\\s*(?:KG|LTR|L|G)?$",
+          "expected": "900 KG"
+        },
+        {
+          "id": "a751b3f6-952c-45ae-ab59-cfb742f2f9aa",
+          "semantic": "batch",
+          "name": "Batch",
+          "x": 0.24860943906108296,
+          "y": 0.8059123019156114,
+          "width": 0.08996368002286124,
+          "height": 0.03851081567984106,
+          "required": true,
+          "ocrMode": "line",
+          "regex": "^D[0-9]+$",
+          "expected": "D562808695"
+        }
+      ],
+      "updatedAt": "2026-07-24T17:25:41.081Z"
+    }
+  }
+}
